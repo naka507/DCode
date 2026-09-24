@@ -1668,6 +1668,7 @@ export const zhCN = {
       addTitle: "添加 MCP 服务器",
       editTitle: "编辑 MCP 服务器",
       sheetSubtitle: "运行本地命令或调用 HTTP 地址。",
+      presetLabel: "常用预设",
       searchPlaceholder: "搜索服务器",
       remove: "移除",
       rowActions: "{{name}} 的操作",

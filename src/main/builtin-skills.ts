@@ -80,23 +80,58 @@ export type BuiltinSkillInput = {
   pluginPaths?: string[];
 };
 
+export type BuiltinSkillManifestItem = {
+  id: string;
+  file: string;
+  pluginWorkspaceOnly?: boolean;
+};
+
+export const BUILTIN_SKILLS_MANIFEST: readonly BuiltinSkillManifestItem[] = [
+  {
+    id: PLUGIN_DEV_SKILL_ID,
+    file: PLUGIN_DEV_SKILL_FILE,
+    pluginWorkspaceOnly: true,
+  },
+  {
+    id: "dcode/react-best-practices",
+    file: "react-best-practices.md",
+  },
+  {
+    id: "dcode/agent-browser",
+    file: "agent-browser.md",
+  },
+  {
+    id: "dcode/dogfood",
+    file: "dogfood.md",
+  },
+  {
+    id: "dcode/electron",
+    file: "electron.md",
+  },
+];
+
 /**
  * Catalog entries for the built-in skills that apply to the given session, read
  * fresh so a packaged update takes effect without a restart.
  */
 export function builtinSkills(input: BuiltinSkillInput): PluginSkillDef[] {
-  if (!isPluginWorkspace(input.workspacePath, input.pluginPaths)) return [];
-  const raw = readBuiltinSkill(PLUGIN_DEV_SKILL_FILE);
-  if (!raw?.trim()) return [];
-  const parsed = parseSkillFrontmatter(raw);
-  if (!parsed.body) return [];
-  return [
-    {
-      id: PLUGIN_DEV_SKILL_ID,
-      name: parsed.name ?? "dcode plugin development",
+  const isPluginDev = isPluginWorkspace(input.workspacePath, input.pluginPaths);
+  const out: PluginSkillDef[] = [];
+  for (const item of BUILTIN_SKILLS_MANIFEST) {
+    if (item.pluginWorkspaceOnly && !isPluginDev) {
+      continue;
+    }
+    const raw = readBuiltinSkill(item.file);
+    if (!raw?.trim()) continue;
+    const parsed = parseSkillFrontmatter(raw);
+    if (!parsed.body) continue;
+    out.push({
+      id: item.id,
+      name: parsed.name ?? item.id,
       description: parsed.description,
-    },
-  ];
+    });
+  }
+  return out;
 }
 
 /**
@@ -106,14 +141,18 @@ export function builtinSkills(input: BuiltinSkillInput): PluginSkillDef[] {
 export function loadBuiltinSkillBody(
   id: string,
 ): { id: string; name: string; body: string } | null {
-  if (id !== PLUGIN_DEV_SKILL_ID) return null;
-  const raw = readBuiltinSkill(PLUGIN_DEV_SKILL_FILE);
+  const targetId = id.startsWith("dcode/") ? id : `dcode/${id}`;
+  const item = BUILTIN_SKILLS_MANIFEST.find(
+    (entry) => entry.id === id || entry.id === targetId,
+  );
+  if (!item) return null;
+  const raw = readBuiltinSkill(item.file);
   if (!raw?.trim()) return null;
   const parsed = parseSkillFrontmatter(raw);
   if (!parsed.body) return null;
   return {
-    id: PLUGIN_DEV_SKILL_ID,
-    name: parsed.name ?? "dcode plugin development",
+    id: item.id,
+    name: parsed.name ?? item.id,
     body: parsed.body,
   };
 }

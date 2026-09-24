@@ -47,7 +47,9 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   isNonLoopbackHttpMcpUrl,
+  MCP_PRESETS,
   type AgentCapabilityLevel,
+  type McpPreset,
   type McpServerRecord,
   type McpServerStatus,
   type McpTransport,
@@ -63,6 +65,7 @@ import TooltipButton from "../TooltipButton.vue";
 import KeyValueRows from "./KeyValueRows.vue";
 import ScopeControl from "./ScopeControl.vue";
 import {
+  draftFromPreset,
   mcpDraftError,
   mcpIdFromLabel,
   type McpDraft,
@@ -146,6 +149,19 @@ function setLabel(value: string): void {
   });
 }
 
+const selectedPresetId = ref<string | null>(null);
+
+const activePresetDescription = computed(() => {
+  if (!selectedPresetId.value) return null;
+  return MCP_PRESETS.find((p) => p.id === selectedPresetId.value)?.description ?? null;
+});
+
+function applyPreset(preset: McpPreset): void {
+  selectedPresetId.value = preset.id;
+  idTouched.value = true;
+  emit("update:draft", draftFromPreset(preset, props.draft.scope));
+}
+
 /* See note 6: one listener for the sheet's lifetime, reading the live `saving`. */
 function onKeyDown(event: KeyboardEvent): void {
   if (event.key === "Escape" && !props.saving) emit("close");
@@ -179,6 +195,7 @@ const managementScopeHint = computed(() =>
  * specifier.
  */
 export {
+  draftFromPreset,
   draftFromRecord,
   draftToInput,
   emptyMcpDraft,
@@ -229,6 +246,25 @@ export { pairsToRecord, recordToPairs, type KeyValuePair } from "./key-value-row
         </div>
 
         <div class="ext-sheet-body">
+          <div v-if="!props.editing" class="ext-field-group">
+            <div class="ext-field-label">{{ t("extensions.mcp.presetLabel") }}</div>
+            <div class="ext-preset-pick" role="group" :aria-label="t('extensions.mcp.presetLabel')">
+              <button
+                v-for="preset in MCP_PRESETS"
+                :key="preset.id"
+                type="button"
+                class="ext-preset-chip"
+                :class="{ 'is-selected': selectedPresetId === preset.id }"
+                @click="applyPreset(preset)"
+              >
+                <span class="ext-preset-chip-name">{{ preset.name }}</span>
+              </button>
+            </div>
+            <p v-if="activePresetDescription" class="ext-preset-desc">
+              {{ activePresetDescription }}
+            </p>
+          </div>
+
           <div class="ext-field-group">
             <div class="ext-field-label">{{ t("extensions.mcp.transport") }}</div>
             <div

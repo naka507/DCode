@@ -1695,6 +1695,7 @@ importConfirm: "Imported extensions run inside the agent process with the same a
       addTitle: "Add an MCP server",
       editTitle: "Edit MCP server",
       sheetSubtitle: "Run a local command or call an HTTP endpoint.",
+      presetLabel: "Popular presets",
       searchPlaceholder: "Search servers",
       remove: "Remove",
       rowActions: "Actions for {{name}}",

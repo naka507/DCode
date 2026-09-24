@@ -15,6 +15,7 @@ import {
   resolveScope,
   type ActivationScope,
   type AgentCapabilityLevel,
+  type McpPreset,
   type McpServerInput,
   type McpServerRecord,
   type McpTransport,
@@ -64,6 +65,23 @@ export function draftFromRecord(record: McpServerRecord): McpDraft {
     headers: recordToPairs(record.headers),
     enabled: record.enabled,
     scope: resolveScope(record.scope),
+  };
+}
+
+export function draftFromPreset(preset: McpPreset, scope: ActivationScope = GLOBAL_SCOPE): McpDraft {
+  const s = preset.server;
+  return {
+    id: s.id,
+    label: s.label ?? preset.name,
+    description: s.description ?? preset.description,
+    transport: s.transport,
+    command: s.command ?? "",
+    args: (s.args ?? []).join(" "),
+    env: recordToPairs(s.env),
+    url: s.url ?? "",
+    headers: recordToPairs(s.headers),
+    enabled: s.enabled !== false,
+    scope,
   };
 }
 
