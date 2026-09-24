@@ -7,7 +7,7 @@ export function projectInstructionsPrompt(
   return [
     "# Project instructions",
     "",
-    "The following instructions are loaded by dcode. Follow them when they apply to the task; entries later in this section are closer to the file being worked on and take precedence.",
+    "The following instructions are loaded by DCode. Follow them when they apply to the task; entries later in this section are closer to the file being worked on and take precedence.",
     "",
     ...instructions.entries.flatMap((entry) => [
       `## ${entry.source}`,

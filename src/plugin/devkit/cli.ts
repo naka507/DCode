@@ -5,7 +5,7 @@ import { pack } from "./pack.js";
 import { publish } from "./publish.js";
 import { TEMPLATE_NAMES, isTemplateName, scaffold } from "./templates.js";
 
-const USAGE = `pi-plugin — dcode plugin development commands
+const USAGE = `pi-plugin — DCode plugin development commands
 
 Usage:
   pi-plugin init <template> <dir> [--id <id>] [--name <name>]

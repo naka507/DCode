@@ -598,7 +598,7 @@ watch([settings, tabHidden], ([next, hidden]) => {
                 <SettingsRow :title="t('settings.application')">
                   <div class="settings-about-meta">
                     <div class="font-medium">
-                      {{ version?.name || "dcode" }} {{ version?.version }}
+                      {{ version?.name || "DCode" }} {{ version?.version }}
                     </div>
                     <div class="font-mono text-xs-plus text-text-muted">
                       protocol {{ version?.protocolVersion }} · host

@@ -161,7 +161,7 @@ export function composeSubagentSystemPrompt(options: {
       ? resolved.join(", ")
       : subagentToolsLabel(definition);
   const framing = [
-    `You are the \"${definition.name}\" subagent inside dcode, working on one task delegated by the main agent.`,
+    `You are the \"${definition.name}\" subagent inside DCode, working on one task delegated by the main agent.`,
     `You cannot see the user, ask questions, or delegate further. Finish the task with the tools you have: ${toolList}.`,
     subagentCanMutate(definition, resolved)
       ? "You may change files, but only the ones the task is about; leave everything else untouched."

@@ -50,7 +50,7 @@ function writeFixture({ hostCoreVersion = APP_VERSION, withDcore = true } = {}) 
   );
   writeFileSync(
     join(dcode, "src", "shared", "protocol.ts"),
-    `export const APP_NAME = "dcode";\nexport const APP_VERSION = "${APP_VERSION}";\n`,
+    `export const APP_NAME = "DCode";\nexport const APP_VERSION = "${APP_VERSION}";\n`,
     "utf8",
   );
   writeFileSync(

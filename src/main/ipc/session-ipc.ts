@@ -324,7 +324,7 @@ export function registerSessionIpc({
   });
   handle(IPC.invoke.sessionDelete, async (id: string) => {
     if (id.startsWith("native-pi:")) {
-      throw Object.assign(new Error("Native Pi sessions cannot be deleted from dcode"), {
+      throw Object.assign(new Error("Native Pi sessions cannot be deleted from DCode"), {
         errorCode: ErrorCodes.INVALID_ARGUMENT,
       });
     }

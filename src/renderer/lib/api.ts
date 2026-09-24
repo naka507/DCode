@@ -291,7 +291,7 @@ declare global {
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   if (!window.dcode?.invoke) {
-    throw new Error("dcode preload bridge unavailable");
+    throw new Error("DCode preload bridge unavailable");
   }
   // `ipcRenderer.invoke` serialises with `structuredClone`, which refuses a
   // Vue proxy outright. Arguments reach here straight from component state, so

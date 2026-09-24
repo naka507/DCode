@@ -188,7 +188,7 @@ const spec = (
  * A future IPC channel is not automatically exposed until reviewed here.
  */
 const CONTROL_OPERATION_SPECS: OperationSpec[] = [
-  spec("appGetVersion", "app/getVersion", "Return dcode and host versions.", "read", []),
+  spec("appGetVersion", "app/getVersion", "Return DCode and host versions.", "read", []),
   spec("appHealth", "app/health", "Return host health.", "read", []),
   spec("appGetOnboarding", "app/getOnboarding", "Read onboarding state.", "read", []),
   spec("appDismissOnboarding", "app/dismissOnboarding", "Dismiss onboarding.", "write", []),
@@ -286,7 +286,7 @@ const coreTool = (
 });
 
 const CORE_TOOL_SPECS = [
-  coreTool("pi_app_info", "Read dcode and host version information.", objectSchema({}), "app/getVersion", () => []),
+  coreTool("pi_app_info", "Read DCode and host version information.", objectSchema({}), "app/getVersion", () => []),
   coreTool("pi_project_get", "Read the active project workspace.", objectSchema({}), "project/get", () => []),
   coreTool("pi_project_list", "List durable projects.", objectSchema({}), "project/list", () => []),
   coreTool(
@@ -1081,7 +1081,7 @@ export class McpControlServer {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: this.serverName, version: this.version },
           instructions:
-            "Local dcode control plane. Named tools cover project/session/Agent/workspace. Dangerous operations, including session/configure permissionMode, require confirm=true. confirm is an agent acknowledgement, not a desktop user prompt. Poll pi_session_get or pi_agent_status for turn progress; this server does not stream SSE.",
+            "Local DCode control plane. Named tools cover project/session/Agent/workspace. Dangerous operations, including session/configure permissionMode, require confirm=true. confirm is an agent acknowledgement, not a desktop user prompt. Poll pi_session_get or pi_agent_status for turn progress; this server does not stream SSE.",
         }),
         sessionId,
       };
@@ -1141,7 +1141,7 @@ export class McpControlServer {
     });
     const generic: McpTool = {
       name: "dcode_invoke",
-      description: "Invoke a reviewed dcode operation. Use pi_control_describe for ids and argument shapes. Dangerous operations require confirm=true. This is an agent acknowledgement, not a user prompt.",
+      description: "Invoke a reviewed DCode operation. Use pi_control_describe for ids and argument shapes. Dangerous operations require confirm=true. This is an agent acknowledgement, not a user prompt.",
       inputSchema: objectSchema({
         operation: {
           type: "string",
@@ -1176,7 +1176,7 @@ export class McpControlServer {
     };
     const describe: McpTool = {
       name: "pi_control_describe",
-      description: "Return the reviewed dcode operation catalog.",
+      description: "Return the reviewed DCode operation catalog.",
       inputSchema: objectSchema({}),
       execute: async () => this.operations.map((operation) => ({
         id: operation.id,

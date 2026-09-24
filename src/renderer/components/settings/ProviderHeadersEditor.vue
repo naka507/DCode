@@ -39,9 +39,9 @@ type HeaderPreset = {
 };
 
 const HEADER_PRESETS: HeaderPreset[] = [
-  { key: "User-Agent", value: `dcode/${APP_VERSION}` },
-  { key: "X-Client-Name", value: "dcode" },
-  { key: "X-Title", value: "dcode" },
+  { key: "User-Agent", value: `DCode/${APP_VERSION}` },
+  { key: "X-Client-Name", value: "DCode" },
+  { key: "X-Title", value: "DCode" },
 ];
 
 const props = defineProps<{

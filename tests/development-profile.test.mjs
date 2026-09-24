@@ -35,7 +35,7 @@ test("a development build owns a different data directory than the shipped app",
   // the split can only have moved the development side.
   assert.equal(INSTALLATION_DATA_DIR_NAME, ".dcode");
   assert.equal(DEVELOPMENT_DATA_DIR_NAME, ".dcode-dev");
-  assert.equal(DEVELOPMENT_INSTALLATION_NAME, "dcode Dev");
+  assert.equal(DEVELOPMENT_INSTALLATION_NAME, "DCode Dev");
 });
 
 test("DCODE_DATA_DIR still overrides either profile", () => {

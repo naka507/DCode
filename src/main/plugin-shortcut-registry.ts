@@ -132,7 +132,7 @@ export class PluginShortcutRegistry {
         { pluginId, accelerator, code: "SHORTCUT_CONFLICT" },
         new PluginShortcutError(
           "SHORTCUT_CONFLICT",
-          `${accelerator} is already used by dcode`,
+          `${accelerator} is already used by DCode`,
         ),
       );
     }

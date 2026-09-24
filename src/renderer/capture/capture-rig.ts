@@ -142,7 +142,7 @@ export function installCaptureRig(): CaptureRig {
         ["user", "分组标题的字号再小一点"],
         [
           "assistant",
-          "已把分组标题从 `--text-sm` 调整为 `--text-2xs`，同时收紧了上下间距，现在与 dcode 的密度一致。",
+          "已把分组标题从 `--text-sm` 调整为 `--text-2xs`，同时收紧了上下间距，现在与 DCode 的密度一致。",
         ],
         ["user", "最后跑一遍检查"],
         [

@@ -2,7 +2,7 @@ export const en = {
   app: {
     shellName: "Code",
     tagline: "Local AI coding partner",
-    starting: "Starting dcode…",
+    starting: "Starting DCode…",
     loadingView: "Loading view…",
     uiCrashed: "Something went wrong with the interface",
   },
@@ -25,13 +25,13 @@ export const en = {
     unread: "Unread",
     pinned: "Pinned",
     viewMore: "View more…",
-    open: "Open dcode",
-    quit: "Quit dcode",
-    askTitle: "Keep dcode running in the background?",
+    open: "Open DCode",
+    quit: "Quit DCode",
+    askTitle: "Keep DCode running in the background?",
     askBody:
-      "When you close the window, dcode can keep running in the system tray so nothing is lost. You can change this any time in Settings.",
+      "When you close the window, DCode can keep running in the system tray so nothing is lost. You can change this any time in Settings.",
     closeToTray: "Close to tray",
-    confirmQuitTitle: "Quit dcode?",
+    confirmQuitTitle: "Quit DCode?",
     confirmQuitBody:
       "Are you sure you want to quit? All running sessions will be stopped and unsaved changes may be lost.",
     confirmQuit: "Quit",
@@ -88,7 +88,7 @@ export const en = {
     zoomOut: "Zoom Out",
     toggleFullScreen: "Toggle Full Screen",
     toggleDevTools: "Developer Tools",
-    appHelp: "dcode Help",
+    appHelp: "DCode Help",
     openLogs: "Open Logs",
     checkForUpdates: "Check for Updates…",
   },
@@ -225,7 +225,7 @@ export const en = {
     emptyTitle: "What can I help you build?",
     emptyTitleInProject: "What can we build in {{project}}?",
     emptyTitleTemporary: "What would you like to explore temporarily?",
-    placeholder: "Ask dcode to help with anything",
+    placeholder: "Ask DCode to help with anything",
     placeholderHome: "Ask anything",
     placeholderHint: "Type / for commands · @ for files",
     placeholderHomeHint: "Type / for commands · @ for files",
@@ -581,7 +581,7 @@ export const en = {
       "This provider comes from the plugin \"{{plugin}}\", which supplies its endpoint and models. Enable or disable it on the Plugins page.",
     pluginProviderKey: "API key",
     pluginProviderKeyHint:
-      "Stored in dcode and used by the runtime. The plugin never receives it.",
+      "Stored in DCode and used by the runtime. The plugin never receives it.",
     pluginProviderKeyRemove: "Remove key",
     pluginProviderKeySaved: "API key saved",
     pluginProviderKeyRemoved: "API key removed",
@@ -1637,9 +1637,9 @@ importConfirm: "Imported extensions run inside the agent process with the same a
         "Can spend your model quota on a one-shot completion. The plugin never receives your API keys.",
       "agent.extension": "Runs ExtensionAPI modules inside the agent process with the same access as the agent's own tools. Enable only code you trust.",
       "provider.register":
-        "Adds the providers this plugin defines to Settings' provider list. The plugin supplies the endpoint and models; your API key stays in dcode.",
+        "Adds the providers this plugin defines to Settings' provider list. The plugin supplies the endpoint and models; your API key stays in DCode.",
       "desktop.control":
-        "Lets the plugin invoke the reviewed dcode control catalog. Destructive operations still require confirm=true; the MCP bearer token is never exposed.",
+        "Lets the plugin invoke the reviewed DCode control catalog. Destructive operations still require confirm=true; the MCP bearer token is never exposed.",
       "models.list": "Can see which models you have signed in for. It does not receive keys.",
       "session.read":
         "Can read the conversation the current tool call is operating on, including tool results.",
@@ -1654,7 +1654,7 @@ importConfirm: "Imported extensions run inside the agent process with the same a
       "audio.capture.background": "Captures the microphone while the plugin runs in the background, with no panel open.",
       "audio.playback.background": "Plays audio the plugin streams, even when no panel is open.",
       "speech.adapter.register": "Can add a transcription or speech protocol that uses your existing provider keys. The plugin never sees the key.",
-      "keyboard.globalShortcut": "Registers system-wide keyboard shortcuts that trigger this plugin's own commands while dcode is not focused.",
+      "keyboard.globalShortcut": "Registers system-wide keyboard shortcuts that trigger this plugin's own commands while DCode is not focused.",
       "net.websocket": "Opens real-time two-way connections to the hostnames the plugin declared.",
       "bus.publish": "Can send messages on the topics it declared.",
       "bus.subscribe": "Can receive messages on the topics it declared.",
@@ -1893,7 +1893,7 @@ importConfirm: "Imported extensions run inside the agent process with the same a
     unsupportedGlibc:
       "This Linux build needs glibc 2.35 or newer (Ubuntu 22.04, Debian 12, Fedora 36+).",
     dbSchemaTooNew:
-      "This dcode is older than your local data (data schema {{found}}, this build supports {{supported}}). Install the newer dcode that last opened this data, or a later version.",
+      "This DCode is older than your local data (data schema {{found}}, this build supports {{supported}}). Install the newer DCode that last opened this data, or a later version.",
     archMismatch:
       "This is the {{buildArch}} build running on a {{machineArch}} machine, so it runs through translation and is slower. Install the {{machineArch}} build instead.",
     dismissArchMismatch: "Dismiss",

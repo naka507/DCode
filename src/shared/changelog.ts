@@ -68,7 +68,7 @@ const enEntries: ChangelogEntry[] = [
     version: "1.0.0",
     date: "2026-09-22",
     highlights: [
-      "First release of dcode: an agent workspace for working with models, running tools, and reviewing the result.",
+      "First release of DCode: an agent workspace for working with models, running tools, and reviewing the result.",
       "Chat and Agent modes, with streaming replies, thinking levels, and per-model settings.",
       "Workspace tools with permission gating: terminal, file editing, browser, and git review.",
       "Projects: group folders into one named project, keep several open at once, and manage them in the archive.",
@@ -129,7 +129,7 @@ const zhCNEntries: ChangelogEntry[] = [
     version: "1.0.0",
     date: "2026-09-22",
     highlights: [
-      "dcode 首个版本：一个用于与模型协作、运行工具并审查结果的 Agent 工作台。",
+      "DCode 首个版本：一个用于与模型协作、运行工具并审查结果的 Agent 工作台。",
       "Chat 与 Agent 两种模式，支持流式回复、思考级别以及按模型单独设置。",
       "工作区工具均带权限确认：终端、文件编辑、浏览器与 Git 审查。",
       "项目：把多个文件夹归为一个命名项目，可同时打开多个，并在归档中统一管理。",

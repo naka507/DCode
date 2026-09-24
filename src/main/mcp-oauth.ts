@@ -575,7 +575,7 @@ export class McpOAuthManager {
             res.end(
               this.renderHtml(
                 true,
-                "Authorization successful! You can close this tab and return to dcode.",
+                "Authorization successful! You can close this tab and return to DCode.",
               ),
             );
 
