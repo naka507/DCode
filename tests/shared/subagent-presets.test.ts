@@ -18,11 +18,11 @@ describe("SUBAGENT_PRESETS", () => {
   it("ships the five builtin roles", () => {
     const ids = SUBAGENT_PRESETS.map((preset) => preset.id);
     expect(ids).toEqual([
-      "explorer",
-      "code-reviewer",
-      "test-runner",
-      "fixer",
-      "ui-designer",
+      "researcher",
+      "reviewer",
+      "tester",
+      "coder",
+      "designer",
     ]);
   });
 
@@ -51,17 +51,17 @@ describe("SUBAGENT_PRESETS", () => {
   });
 
   it("grants Edit/Write only to roles that need them", () => {
-    const fixer = findSubagentPreset("fixer");
-    const explorer = findSubagentPreset("explorer");
-    const reviewer = findSubagentPreset("code-reviewer");
-    const runner = findSubagentPreset("test-runner");
-    const designer = findSubagentPreset("ui-designer");
-    expect(fixer?.tools).toContain("Edit");
-    expect(fixer?.tools).toContain("Write");
+    const coder = findSubagentPreset("coder");
+    const researcher = findSubagentPreset("researcher");
+    const reviewer = findSubagentPreset("reviewer");
+    const runner = findSubagentPreset("tester");
+    const designer = findSubagentPreset("designer");
+    expect(coder?.tools).toContain("Edit");
+    expect(coder?.tools).toContain("Write");
     expect(designer?.tools).toContain("Edit");
     expect(designer?.tools).toContain("Write");
     expect(designer?.tools).toContain("BrowserPreview");
-    expect(explorer?.tools ?? []).not.toContain("Edit");
+    expect(researcher?.tools ?? []).not.toContain("Edit");
     expect(reviewer?.tools ?? []).not.toContain("Edit");
     expect(runner?.tools ?? []).not.toContain("Edit");
   });
@@ -69,9 +69,18 @@ describe("SUBAGENT_PRESETS", () => {
 
 describe("findSubagentPreset", () => {
   it("returns the matching preset", () => {
-    expect(findSubagentPreset("explorer")?.id).toBe("explorer");
-    expect(findSubagentPreset("fixer")?.id).toBe("fixer");
-    expect(findSubagentPreset("ui-designer")?.id).toBe("ui-designer");
+    expect(findSubagentPreset("researcher")?.id).toBe("researcher");
+    expect(findSubagentPreset("coder")?.id).toBe("coder");
+    expect(findSubagentPreset("designer")?.id).toBe("designer");
+  });
+
+  it("resolves legacy and alias names to canonical presets", () => {
+    expect(findSubagentPreset("explorer")?.id).toBe("researcher");
+    expect(findSubagentPreset("fixer")?.id).toBe("coder");
+    expect(findSubagentPreset("code-reviewer")?.id).toBe("reviewer");
+    expect(findSubagentPreset("test-runner")?.id).toBe("tester");
+    expect(findSubagentPreset("ui-designer")?.id).toBe("designer");
+    expect(findSubagentPreset("代码开发")?.id).toBe("coder");
   });
 
   it("returns undefined for unknown ids", () => {

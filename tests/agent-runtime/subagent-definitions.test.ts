@@ -24,16 +24,16 @@ import {
 } from "../../src/agent/runtime/model-capabilities.js";
 
 describe("builtin subagent documents", () => {
-  it("parse into read-only delegates plus a write-capable fixer", async () => {
+  it("parse into read-only delegates plus a write-capable coder", async () => {
     const { definitions, diagnostics } = await loadSubagentDefinitions(null);
 
     expect(diagnostics).toEqual([]);
     expect(definitions.map((d) => d.name)).toEqual([
-      "explorer",
-      "code-reviewer",
-      "test-runner",
-      "fixer",
-      "ui-designer",
+      "researcher",
+      "reviewer",
+      "tester",
+      "coder",
+      "designer",
     ]);
     expect(definitions).toHaveLength(BUILTIN_SUBAGENT_DOCUMENTS.length);
     // The turn cap is gone (ADR 0253): no builtin document declares one.
@@ -45,7 +45,7 @@ describe("builtin subagent documents", () => {
       expect(definition.description.length).toBeGreaterThan(20);
       expect(definition.prompt.length).toBeGreaterThan(50);
     }
-    // Only `fixer` and `ui-designer` may write to the workspace; every other
+    // Only `coder` and `designer` may write to the workspace; every other
     // builtin is read-only (the shell delegate reads and runs commands, which
     // is a permission prompt, not an edit). Builtins inherit the parent
     // session's permission mode unless they explicitly opt into a narrower
@@ -54,22 +54,22 @@ describe("builtin subagent documents", () => {
       (definition) =>
         definition.tools.includes("Write") || definition.tools.includes("Edit"),
     );
-    expect(mutating.map((d) => d.name)).toEqual(["fixer", "ui-designer"]);
+    expect(mutating.map((d) => d.name)).toEqual(["coder", "designer"]);
     expect(mutating[0]?.permission ?? "inherit").toBe("inherit");
-    const explorer = definitions.find((definition) => definition.name === "explorer")!;
-    expect(explorer.tools).toEqual(["Read", "Glob", "Grep", "Bash"]);
-    expect(subagentCanMutate(explorer)).toBe(true);
-    expect("maxTurns" in explorer).toBe(false);
-    expect(explorer.idleTimeoutSeconds).toBe(
+    const researcher = definitions.find((definition) => definition.name === "researcher")!;
+    expect(researcher.tools).toEqual(["Read", "Glob", "Grep", "Bash"]);
+    expect(subagentCanMutate(researcher)).toBe(true);
+    expect("maxTurns" in researcher).toBe(false);
+    expect(researcher.idleTimeoutSeconds).toBe(
       DEFAULT_SUBAGENT_IDLE_TIMEOUT_SECONDS,
     );
-    expect(explorer.maxDurationSeconds).toBe(21_600);
+    expect(researcher.maxDurationSeconds).toBe(21_600);
     expect(definitions[2].tools).toContain("Bash");
-    const designer = definitions.find((definition) => definition.name === "ui-designer")!;
+    const designer = definitions.find((definition) => definition.name === "designer")!;
     expect(designer.tools).toContain("BrowserPreview");
     expect("maxTurns" in designer).toBe(false);
-    expect(designer.description).toBe(findSubagentPreset("ui-designer")?.description);
-    expect(designer.prompt).toBe(findSubagentPreset("ui-designer")?.body.trim());
+    expect(designer.description).toBe(findSubagentPreset("designer")?.description);
+    expect(designer.prompt).toBe(findSubagentPreset("designer")?.body.trim());
   });
 });
 
@@ -108,37 +108,46 @@ describe("loadSubagentDefinitions", () => {
     expect(explorer.tools).toEqual(["Read"]);
     expect(definitions.filter((d) => d.name === "explorer")).toHaveLength(1);
     // The shadowed builtin is gone, the other builtins stay.
-    expect(definitions.map((d) => d.name)).toContain("code-reviewer");
+    expect(definitions.map((d) => d.name)).toContain("reviewer");
   });
 
   it("drops a switched-off builtin from the catalog and keeps it as a builtin row", async () => {
     const { definitions, builtins, diagnostics } = await loadSubagentDefinitions(null, {
-      disabledBuiltins: ["fixer"],
+      disabledBuiltins: ["coder"],
     });
 
     expect(diagnostics).toEqual([]);
-    expect(definitions.map((d) => d.name)).not.toContain("fixer");
-    expect(definitions.map((d) => d.name)).toContain("explorer");
+    expect(definitions.map((d) => d.name)).not.toContain("coder");
+    expect(definitions.map((d) => d.name)).toContain("researcher");
     // Settings needs the row back: its switch is the only way on again, and a
     // builtin has no document to delete.
-    expect(builtins.map((d) => d.name)).toContain("fixer");
+    expect(builtins.map((d) => d.name)).toContain("coder");
     expect(builtins.every((d) => d.source === "builtin")).toBe(true);
+  });
+
+  it("drops a switched-off builtin using legacy alias like fixer", async () => {
+    const { definitions, builtins } = await loadSubagentDefinitions(null, {
+      disabledBuiltins: ["fixer"],
+    });
+
+    expect(definitions.map((d) => d.name)).not.toContain("coder");
+    expect(builtins.map((d) => d.name)).toContain("coder");
   });
 
   it("lets a user document keep a handle the user switched the builtin off", async () => {
     const { definitions, builtins } = await loadSubagentDefinitions(null, {
       userDocuments: [
         {
-          id: "fixer",
-          document: "---\nname: fixer\ndescription: Mine.\ntools: [Read]\n---\nMine.\n",
-          filePath: "/home/.agents/subagents/fixer.md",
+          id: "coder",
+          document: "---\nname: coder\ndescription: Mine.\ntools: [Read]\n---\nMine.\n",
+          filePath: "/home/.agents/subagents/coder.md",
         },
       ],
-      disabledBuiltins: ["fixer"],
+      disabledBuiltins: ["coder"],
     });
 
-    expect(definitions.find((d) => d.name === "fixer")?.source).toBe("user");
-    expect(builtins.map((d) => d.name)).not.toContain("fixer");
+    expect(definitions.find((d) => d.name === "coder")?.source).toBe("user");
+    expect(builtins.map((d) => d.name)).not.toContain("coder");
   });
 
   it("reports a malformed document without losing the others", async () => {
@@ -201,7 +210,7 @@ describe("loadSubagentDefinitions", () => {
     expect(byName.get("test-runner")!.source).toBe("user");
     expect(byName.get("test-runner")!.filePath).toBe("/home/.agents/subagents/test-runner.md");
     expect(byName.get("note-taker")!.tools).toEqual(["Read", "Write"]);
-    expect(byName.get("code-reviewer")!.source).toBe("builtin");
+    expect(byName.get("reviewer")!.source).toBe("builtin");
     expect(definitions.filter((d) => d.name === "explorer")).toHaveLength(1);
   });
 
@@ -221,7 +230,7 @@ describe("loadSubagentDefinitions", () => {
     expect(diagnostics.join("\n")).toContain('user subagent "broken"');
     expect(diagnostics.join("\n")).toContain("missing `description`");
     // The builtins are untouched by one bad registry entry.
-    expect(definitions.map((d) => d.name)).toContain("explorer");
+    expect(definitions.map((d) => d.name)).toContain("researcher");
   });
 });
 

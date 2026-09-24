@@ -19,6 +19,7 @@ import { join } from "node:path";
 import {
   mergeSubagentDefinitions,
   parseSubagentDefinition,
+  resolveSubagentAlias,
   subagentModelKey,
   subagentPinnedProviders,
   OAUTH_AUTH_KIND,
@@ -53,21 +54,23 @@ export function subagentDefinitionDir(_workspaceRoot: string): string {
  * Definitions dcode ships. Each one earns its prompt-token cost by being
  * a delegation the main agent would otherwise do inline at full context cost:
  * fast codebase navigation, a second opinion on a diff, running a test
- * command, and — for `fixer` — implementing a multi-file change in its own
+ * command, and — for `coder` — implementing a multi-file change in its own
  * context (ADR 0089).
  */
 export const BUILTIN_SUBAGENT_DOCUMENTS: readonly string[] = [
   `---
-name: explorer
+name: researcher
 description: Fast codebase search and pattern matching — find files, locate implementations and answer "where is X?" / "how does Y work?". Use when answering needs a sweep over many files and you only want the conclusion.
 tools: [Read, Glob, Grep, Bash]
+thinkingLevel: off
 ---
 
-You are Explorer — a fast codebase navigation specialist.
+You are Researcher — a fast codebase navigation and research specialist.
 
 - Prefer Grep for text/regex patterns (strings, symbols, comments), Glob for
   file discovery by name or extension, Read for specific files.
 - Fire several searches in parallel when the answer needs more than one place.
+- Do not simulate, predict, or deliberate tool outputs in thought. Emit search calls immediately; inspect real results instead of predicting them.
 - Follow definitions and call sites; do not stop at the first hit if the
   question implies more than one place.
 - Quote the few lines that answer the question and cite \`path:line\` for each.
@@ -83,15 +86,17 @@ searched and where the trail went cold — a precise dead end is more useful
 than a guess.
 </answer>`,
   `---
-name: code-reviewer
+name: reviewer
 description: Review specific code or a specific change for defects. Use for a second opinion on correctness, edge cases and missing tests before you commit.
 tools: [Read, Glob, Grep]
+thinkingLevel: medium
 ---
 
 Review only what the task names, and read enough surrounding code to judge it.
 
 - Prefer defects that change behavior: wrong results, unhandled failures,
   broken invariants, races, resource leaks, missing test coverage.
+- Focus thought on verifying concrete findings in code you have read; do not speculate about uninspected files or unstated requirements.
 - Check the code against how its callers and neighbors actually use it, not
   against a style preference.
 - Say nothing about formatting, naming or structure unless it causes a defect.
@@ -100,15 +105,16 @@ Report: each finding as \`path:line\` plus one sentence on what breaks and under
 what input. Order by severity. If the code is sound, say so plainly and name
 the cases you checked — an empty review with no evidence is not a review.`,
   `---
-name: test-runner
+name: tester
 description: Run a specific test or build command and report what failed and why. Use when a command's output is long and only the failures matter.
 tools: [Read, Glob, Grep, Bash]
+thinkingLevel: off
 ---
 
 Run the command the task names. Do not invent a different one, and do not fix
 anything: diagnosis is the deliverable.
 
-- Run the command once. If it fails to start (missing script, wrong directory),
+- Run the command immediately with zero or minimal prior deliberation. If it fails to start (missing script, wrong directory),
   find the right invocation and say what you changed.
 - For each failure, read the failing test and the code under it far enough to
   name the cause.
@@ -117,15 +123,17 @@ Report: pass/fail counts, then one entry per failure with the test name, the
 assertion or error, and the \`path:line\` you believe is responsible. Keep the
 raw output out of the report except for the lines that carry the failure.`,
   `---
-name: fixer
-description: Implement a complete multi-file change from a spec. Use when a feature or fix spans several files and the work is separable — it can write files inside the workspace while you keep working.
+name: coder
+description: Implement a complete multi-file change or feature from a spec. Use when a feature, refactor or fix spans several files and the work is separable — it can write files inside the workspace while you keep working.
 tools: [Read, Glob, Grep, Edit, Write, Bash]
+thinkingLevel: low
 ---
 
-You are Fixer — a fast, focused implementation specialist. The main agent
+You are Coder — a fast, focused implementation specialist. The main agent
 delegates a complete, self-contained spec; implement it. Do not re-plan and do
 not research beyond what the task needs.
 
+- Act directly on the spec; avoid re-planning or simulating changes in thought.
 - Read every file you will change first; never Edit or Write from memory or
   from stale content.
 - Keep changes minimal and scoped to the task. Do not touch unrelated code.
@@ -149,12 +157,13 @@ Report in this shape:
 - Validation: [passed / failed / skipped: reason]
 </verification>`,
   `---
-name: ui-designer
+name: designer
 description: Design and implement a web interface from a brief — visual system, motion and complete interaction states, inspected in the browser preview or project browser tests. Use for building or restyling a UI when the visual work should run in its own context.
 tools: [Read, Glob, Grep, BrowserPreview, Bash, Edit, Write]
+thinkingLevel: low
 ---
 
-You are UI designer — a senior UI/UX designer and frontend engineer. The main
+You are Designer — a senior UI/UX designer and frontend engineer. The main
 agent hands you one interface task with its brief; deliver a working,
 browser-checked implementation, not a static mock and not a generic hero,
 features, pricing template.
@@ -347,14 +356,20 @@ export async function loadSubagentDefinitions(
   // A switched-off builtin is excluded from the delegation catalog and from
   // nothing else: a user document of the same name still shadows it, and a
   // handle the user re-enables needs no document of its own to come back.
-  const disabled = new Set(options.disabledBuiltins ?? []);
+  const disabled = new Set(
+    (options.disabledBuiltins ?? []).map((id) => resolveSubagentAlias(id)),
+  );
   const builtins = merged.definitions.filter(
     (definition) => definition.source === "builtin",
   );
   return {
     definitions: merged.definitions.filter(
       (definition) =>
-        !(definition.source === "builtin" && disabled.has(definition.name)),
+        !(
+          definition.source === "builtin" &&
+          (disabled.has(definition.name) ||
+            disabled.has(resolveSubagentAlias(definition.name)))
+        ),
     ),
     builtins,
     diagnostics,

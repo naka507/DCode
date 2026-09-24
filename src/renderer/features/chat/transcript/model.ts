@@ -41,11 +41,17 @@ export function localizeAgentName(rawName: string, isZh = true): string {
     if (/[\u4e00-\u9fa5]/.test(trimmed)) {
       return trimmed;
     }
+    if (lower === "coder" || lower === "developer" || lower === "builder") {
+      return "开发";
+    }
     if (lower === "codereviewer" || lower === "reviewer" || lower === "review") {
       return "审查";
     }
     if (lower === "testrunner" || lower === "tester" || lower === "test") {
       return "测试";
+    }
+    if (lower === "researcher" || lower === "research") {
+      return "调研";
     }
     if (lower === "explorer" || lower === "explore") {
       return "探索";
@@ -60,11 +66,19 @@ export function localizeAgentName(rawName: string, isZh = true): string {
   }
 
   // Non-Chinese (English default)
-  if (trimmed === "审查") return "Review";
-  if (trimmed === "测试") return "Test";
+  if (trimmed === "审查" || trimmed === "复核") return "Review";
+  if (trimmed === "测试" || trimmed === "验证") return "Test";
   if (trimmed === "探索" || trimmed === "探查") return "Explore";
+  if (trimmed === "调研") return "Researcher";
   if (trimmed === "修复") return "Fix";
+  if (trimmed === "开发" || trimmed === "实现") return "Coder";
   if (trimmed === "设计") return "Design";
+  if (lower === "coder" || lower === "developer" || lower === "builder") {
+    return "Coder";
+  }
+  if (lower === "researcher" || lower === "research") {
+    return "Researcher";
+  }
   if (lower === "codereviewer" || lower === "reviewer" || lower === "review") {
     return "Review";
   }

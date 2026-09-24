@@ -10,7 +10,12 @@
  * starter values and is exercised by `subagent-presets.test.ts`.
  */
 
-import { DEFAULT_SUBAGENT_TOOLS, type SubagentDefinition } from "./subagent-definition.js";
+import {
+  DEFAULT_SUBAGENT_TOOLS,
+  resolveSubagentAlias,
+  type SubagentDefinition,
+} from "./subagent-definition.js";
+import type { SubagentThinkingLevel } from "./types.js";
 
 /**
  * One built-in subagent surfaced as a "start from template" entry in the
@@ -20,35 +25,49 @@ import { DEFAULT_SUBAGENT_TOOLS, type SubagentDefinition } from "./subagent-defi
  */
 export type SubagentPreset = {
   /** Stable id used for i18n keys and analytics; matches `definition.name`. */
-  id: "explorer" | "code-reviewer" | "test-runner" | "fixer" | "ui-designer";
+  id:
+    | "researcher"
+    | "reviewer"
+    | "tester"
+    | "coder"
+    | "designer"
+    | "explorer"
+    | "code-reviewer"
+    | "test-runner"
+    | "fixer"
+    | "ui-designer";
   /** Display name shown on the preset chip. */
   name: string;
   /** One-line description mirroring the definition's frontmatter. */
   description: string;
   /** Tools the preset declares; rendered as the checked defaults in the form. */
   tools: readonly string[];
+  /** Default thinking level for this preset. */
+  thinkingLevel?: SubagentThinkingLevel;
   /** Body written into the editor when the preset is picked. */
   body: string;
 };
 
 /**
  * Built-in presets. Keep in lockstep with `BUILTIN_SUBAGENT_DOCUMENTS` in
- * `agent-runtime/src/subagent-definitions.ts` so a user picking "explorer" in
+ * `agent-runtime/src/subagent-definitions.ts` so a user picking a preset in
  * the editor sees the same prompt the runtime will load.
  */
 export const SUBAGENT_PRESETS: readonly SubagentPreset[] = [
   {
-    id: "explorer",
-    name: "Explorer",
+    id: "researcher",
+    name: "Researcher",
     description:
       "Fast codebase search and pattern matching — find files, locate implementations and answer \"where is X?\" / \"how does Y work?\". Use when answering needs a sweep over many files and you only want the conclusion.",
     tools: ["Read", "Glob", "Grep", "Bash"],
+    thinkingLevel: "off",
     body:
-      `You are Explorer — a fast codebase navigation specialist.\n` +
+      `You are Researcher — a fast codebase navigation and research specialist.\n` +
       `\n` +
       `- Prefer Grep for text/regex patterns (strings, symbols, comments), Glob for\n` +
       `  file discovery by name or extension, Read for specific files.\n` +
       `- Fire several searches in parallel when the answer needs more than one place.\n` +
+      `- Do not simulate, predict, or deliberate tool outputs in thought. Emit search calls immediately; inspect real results instead of predicting them.\n` +
       `- Follow definitions and call sites; do not stop at the first hit if the\n` +
       `  question implies more than one place.\n` +
       `- Quote the few lines that answer the question and cite \`path:line\` for each.\n` +
@@ -65,16 +84,18 @@ export const SUBAGENT_PRESETS: readonly SubagentPreset[] = [
       `</answer>\n`,
   },
   {
-    id: "code-reviewer",
-    name: "Code reviewer",
+    id: "reviewer",
+    name: "Reviewer",
     description:
       "Review specific code or a specific change for defects. Use for a second opinion on correctness, edge cases and missing tests before you commit.",
     tools: ["Read", "Glob", "Grep"],
+    thinkingLevel: "medium",
     body:
       `Review only what the task names, and read enough surrounding code to judge it.\n` +
       `\n` +
       `- Prefer defects that change behavior: wrong results, unhandled failures,\n` +
       `  broken invariants, races, resource leaks, missing test coverage.\n` +
+      `- Focus thought on verifying concrete findings in code you have read; do not speculate about uninspected files or unstated requirements.\n` +
       `- Check the code against how its callers and neighbors actually use it, not\n` +
       `  against a style preference.\n` +
       `- Say nothing about formatting, naming or structure unless it causes a defect.\n` +
@@ -84,16 +105,17 @@ export const SUBAGENT_PRESETS: readonly SubagentPreset[] = [
       `the cases you checked — an empty review with no evidence is not a review.\n`,
   },
   {
-    id: "test-runner",
-    name: "Test runner",
+    id: "tester",
+    name: "Tester",
     description:
       "Run a specific test or build command and report what failed and why. Use when a command's output is long and only the failures matter.",
     tools: ["Read", "Glob", "Grep", "Bash"],
+    thinkingLevel: "off",
     body:
       `Run the command the task names. Do not invent a different one, and do not fix\n` +
       `anything: diagnosis is the deliverable.\n` +
       `\n` +
-      `- Run the command once. If it fails to start (missing script, wrong directory),\n` +
+      `- Run the command immediately with zero or minimal prior deliberation. If it fails to start (missing script, wrong directory),\n` +
       `  find the right invocation and say what you changed.\n` +
       `- For each failure, read the failing test and the code under it far enough to\n` +
       `  name the cause.\n` +
@@ -103,16 +125,18 @@ export const SUBAGENT_PRESETS: readonly SubagentPreset[] = [
       `raw output out of the report except for the lines that carry the failure.\n`,
   },
   {
-    id: "fixer",
-    name: "Fixer",
+    id: "coder",
+    name: "Coder",
     description:
-      "Implement a complete multi-file change from a spec. Use when a feature or fix spans several files and the work is separable — it can write files inside the workspace while you keep working.",
+      "Implement a complete multi-file change or feature from a spec. Use when a feature, refactor or fix spans several files and the work is separable — it can write files inside the workspace while you keep working.",
     tools: ["Read", "Glob", "Grep", "Edit", "Write", "Bash"],
+    thinkingLevel: "low",
     body:
-      `You are Fixer — a fast, focused implementation specialist. The main agent\n` +
+      `You are Coder — a fast, focused implementation specialist. The main agent\n` +
       `delegates a complete, self-contained spec; implement it. Do not re-plan and do\n` +
       `not research beyond what the task needs.\n` +
       `\n` +
+      `- Act directly on the spec; avoid re-planning or simulating changes in thought.\n` +
       `- Read every file you will change first; never Edit or Write from memory or\n` +
       `  from stale content.\n` +
       `- Keep changes minimal and scoped to the task. Do not touch unrelated code.\n` +
@@ -137,12 +161,13 @@ export const SUBAGENT_PRESETS: readonly SubagentPreset[] = [
       `</verification>\n`,
   },
   {
-    id: "ui-designer",
-    name: "UI designer",
+    id: "designer",
+    name: "Designer",
     description:
       "Design and implement a web interface from a brief — visual system, motion and complete interaction states, inspected in the browser preview or project browser tests. Use for building or restyling a UI when the visual work should run in its own context.",
     tools: ["Read", "Glob", "Grep", "BrowserPreview", "Bash", "Edit", "Write"],
-    body: `You are UI designer — a senior UI/UX designer and frontend engineer. The main
+    thinkingLevel: "low",
+    body: `You are Designer — a senior UI/UX designer and frontend engineer. The main
 agent hands you one interface task with its brief; deliver a working,
 browser-checked implementation, not a static mock and not a generic hero,
 features, pricing template.
@@ -194,9 +219,12 @@ Report in this shape:
   },
 ];
 
-/** Lookup by preset id, used by the editor's "apply preset" handler. */
+/** Lookup by preset id or alias, used by the editor's "apply preset" handler. */
 export function findSubagentPreset(id: string): SubagentPreset | undefined {
-  return SUBAGENT_PRESETS.find((preset) => preset.id === id);
+  const direct = SUBAGENT_PRESETS.find((preset) => preset.id === id);
+  if (direct) return direct;
+  const aliased = resolveSubagentAlias(id);
+  return SUBAGENT_PRESETS.find((preset) => preset.id === aliased);
 }
 
 /** Tools a fresh subagent draft starts with when no preset is chosen. */
@@ -215,5 +243,6 @@ export function fallbackBuiltinDefinitions(): SubagentDefinition[] {
     prompt: preset.body,
     tools: [...preset.tools],
     source: "builtin",
+    ...(preset.thinkingLevel ? { thinkingLevel: preset.thinkingLevel } : {}),
   }));
 }

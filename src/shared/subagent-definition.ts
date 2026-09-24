@@ -267,6 +267,102 @@ export function normalizeSubagentName(value: string): string {
   return basename.trim().toLowerCase().replace(/[\s_]+/g, "-");
 }
 
+/**
+ * Built-in canonical aliases mapping English variants, legacy ids, and Chinese titles
+ * to the standardized SWE role ids (`researcher`, `reviewer`, `tester`, `coder`, `designer`).
+ */
+export const SUBAGENT_ALIASES: Record<string, string> = {
+  // coder (formerly fixer)
+  coder: "coder",
+  developer: "coder",
+  builder: "coder",
+  fixer: "coder",
+  fix: "coder",
+  "代码开发": "coder",
+  "代码实现": "coder",
+  "开发": "coder",
+  "修复": "coder",
+  "代码修复": "coder",
+
+  // reviewer (formerly code-reviewer)
+  reviewer: "reviewer",
+  "code-reviewer": "reviewer",
+  code_reviewer: "reviewer",
+  codereviewer: "reviewer",
+  review: "reviewer",
+  "代码复核": "reviewer",
+  "代码审查": "reviewer",
+  "复核": "reviewer",
+  "审查": "reviewer",
+
+  // tester (formerly test-runner)
+  tester: "tester",
+  "test-runner": "tester",
+  test_runner: "tester",
+  testrunner: "tester",
+  test: "tester",
+  "测试验证": "tester",
+  "测试": "tester",
+
+  // researcher (formerly explorer)
+  researcher: "researcher",
+  explorer: "researcher",
+  explore: "researcher",
+  search: "researcher",
+  searcher: "researcher",
+  navigator: "researcher",
+  "代码调研": "researcher",
+  "代码探索": "researcher",
+  "代码探查": "researcher",
+  "调研": "researcher",
+  "探索": "researcher",
+
+  // designer (formerly ui-designer)
+  designer: "designer",
+  "ui-designer": "designer",
+  ui_designer: "designer",
+  uidesigner: "designer",
+  design: "designer",
+  ui: "designer",
+  "界面设计": "designer",
+  "设计": "designer",
+};
+
+/**
+ * Resolves a given subagent name or synonym to its canonical alias,
+ * falling back to the normalized string.
+ */
+export function resolveSubagentAlias(raw: string): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  if (SUBAGENT_ALIASES[trimmed]) {
+    return SUBAGENT_ALIASES[trimmed];
+  }
+  const normalized = normalizeSubagentName(trimmed);
+  if (SUBAGENT_ALIASES[normalized]) {
+    return SUBAGENT_ALIASES[normalized];
+  }
+  const noDashes = normalized.replace(/-/g, "");
+  if (SUBAGENT_ALIASES[noDashes]) {
+    return SUBAGENT_ALIASES[noDashes];
+  }
+  return normalized;
+}
+
+/**
+ * Checks if a candidate subagent definition name matches a requested identifier,
+ * taking lexical normalization and canonical aliases into account.
+ */
+export function subagentNameMatches(candidateName: string, requestedName: string): boolean {
+  if (!candidateName || !requestedName) return false;
+  const normCandidate = normalizeSubagentName(candidateName);
+  const normRequested = normalizeSubagentName(requestedName);
+  if (normCandidate === normRequested) return true;
+  const aliasCandidate = resolveSubagentAlias(normCandidate);
+  const aliasRequested = resolveSubagentAlias(normRequested);
+  return aliasCandidate === aliasRequested;
+}
+
 export type SubagentParseResult =
   | { ok: true; definition: SubagentDefinition; warnings: string[] }
   | { ok: false; errors: string[]; warnings: string[] };

@@ -10,8 +10,10 @@ import {
   mergeSubagentDefinitions,
   normalizeSubagentName,
   parseSubagentDefinition,
+  resolveSubagentAlias,
   resolveSubagentToolNames,
   subagentCanMutate,
+  subagentNameMatches,
   subagentPinnedProviders,
   subagentToolsLabel,
   type SubagentDefinition,
@@ -567,6 +569,43 @@ describe("normalizeSubagentName", () => {
       "code-reviewer",
     );
     expect(normalizeSubagentName("reviewer")).toBe("reviewer");
+  });
+});
+
+describe("resolveSubagentAlias and subagentNameMatches", () => {
+  it("resolves English legacy ids and synonyms to canonical SWE roles", () => {
+    expect(resolveSubagentAlias("fixer")).toBe("coder");
+    expect(resolveSubagentAlias("builder")).toBe("coder");
+    expect(resolveSubagentAlias("developer")).toBe("coder");
+    expect(resolveSubagentAlias("code-reviewer")).toBe("reviewer");
+    expect(resolveSubagentAlias("test-runner")).toBe("tester");
+    expect(resolveSubagentAlias("explorer")).toBe("researcher");
+    expect(resolveSubagentAlias("ui-designer")).toBe("designer");
+  });
+
+  it("resolves Chinese titles to canonical SWE roles", () => {
+    expect(resolveSubagentAlias("代码开发")).toBe("coder");
+    expect(resolveSubagentAlias("代码实现")).toBe("coder");
+    expect(resolveSubagentAlias("修复")).toBe("coder");
+    expect(resolveSubagentAlias("代码复核")).toBe("reviewer");
+    expect(resolveSubagentAlias("代码审查")).toBe("reviewer");
+    expect(resolveSubagentAlias("测试验证")).toBe("tester");
+    expect(resolveSubagentAlias("测试")).toBe("tester");
+    expect(resolveSubagentAlias("代码调研")).toBe("researcher");
+    expect(resolveSubagentAlias("代码探索")).toBe("researcher");
+    expect(resolveSubagentAlias("界面设计")).toBe("designer");
+  });
+
+  it("subagentNameMatches correctly links candidates and requests", () => {
+    expect(subagentNameMatches("coder", "fixer")).toBe(true);
+    expect(subagentNameMatches("coder", "代码开发")).toBe(true);
+    expect(subagentNameMatches("reviewer", "code-reviewer")).toBe(true);
+    expect(subagentNameMatches("reviewer", "代码审查")).toBe(true);
+    expect(subagentNameMatches("tester", "test-runner")).toBe(true);
+    expect(subagentNameMatches("researcher", "explorer")).toBe(true);
+    expect(subagentNameMatches("designer", "ui-designer")).toBe(true);
+    expect(subagentNameMatches("custom-agent", "custom-agent")).toBe(true);
+    expect(subagentNameMatches("coder", "tester")).toBe(false);
   });
 });
 

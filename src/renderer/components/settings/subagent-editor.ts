@@ -106,6 +106,11 @@ export const BLANK_SUBAGENT_PRESET_ID = "" as const;
  * stays in the middle of the key, which is not in the catalog.
  */
 export const SUBAGENT_PRESET_COPY = {
+  researcher: { name: "presetResearcherName", desc: "presetResearcherDesc" },
+  reviewer: { name: "presetReviewerName", desc: "presetReviewerDesc" },
+  tester: { name: "presetTesterName", desc: "presetTesterDesc" },
+  coder: { name: "presetCoderName", desc: "presetCoderDesc" },
+  designer: { name: "presetDesignerName", desc: "presetDesignerDesc" },
   explorer: { name: "presetExplorerName", desc: "presetExplorerDesc" },
   "code-reviewer": { name: "presetReviewerName", desc: "presetReviewerDesc" },
   "test-runner": { name: "presetTestRunnerName", desc: "presetTestRunnerDesc" },
@@ -214,6 +219,7 @@ export function applySubagentPreset(draft: SubagentDraft, preset: SubagentPreset
     description: preset.description,
     tools: [...preset.tools],
     inheritTools: false,
+    thinkingLevel: preset.thinkingLevel ?? "",
     body: preset.body,
   };
 }

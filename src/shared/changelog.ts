@@ -25,6 +25,15 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "1.0.2",
+    date: "2026-09-24",
+    highlights: [
+      "Subagent SWE role standardization: standardized IDs to coder, reviewer, tester, researcher, designer with full backward compatibility.",
+      "Intelligent subagent alias resolution and fuzzy matching in runtime to prevent unknown subagent errors.",
+      "Optimized subagent thinking levels to significantly reduce execution latency.",
+    ],
+  },
+  {
     version: "1.0.1",
     date: "2026-09-24",
     highlights: [
@@ -56,6 +65,15 @@ const enEntries: ChangelogEntry[] = [
 ];
 
 const zhCNEntries: ChangelogEntry[] = [
+  {
+    version: "1.0.2",
+    date: "2026-09-24",
+    highlights: [
+      "子智能体标准角色化设计：统一规范为 coder、reviewer、tester、researcher、designer，并提供完全向后兼容。",
+      "运行时别名容错与匹配：彻底杜绝因大模型输出别名或中文名称导致的未知子智能体报错。",
+      "优化子智能体思考等级：大幅降低子智能体执行耗时，消除不必要的长时间思考等待。",
+    ],
+  },
   {
     version: "1.0.1",
     date: "2026-09-24",

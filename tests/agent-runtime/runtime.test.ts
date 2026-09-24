@@ -6168,10 +6168,10 @@ describe("DesktopAgentRuntime subagents", () => {
     const tool = taskTool(runtime);
 
     const unknown = await tool.execute("task-1", {
-      agent: "Researcher",
+      agent: "NonExistent",
       task: "Find it.",
     });
-    expect(unknown.content[0].text).toContain('Unknown subagent "Researcher"');
+    expect(unknown.content[0].text).toContain('Unknown subagent "NonExistent"');
     expect(unknown.content[0].text).toContain("explorer");
     await expect(
       agent.afterToolCall({ toolCall: { id: "task-1" } }),

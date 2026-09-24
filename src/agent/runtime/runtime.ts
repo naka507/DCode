@@ -102,8 +102,10 @@ import {
   MAX_SUBAGENT_CONCURRENCY,
   normalizeSubagentName,
   proposalKindForMode,
+  resolveSubagentAlias,
   resolveSubagentToolNames,
   subagentModelKey,
+  subagentNameMatches,
   subagentToolsLabel,
   type ProposalKind,
   type SubagentPermission,
@@ -1740,14 +1742,22 @@ Work splits into independent pieces — delegate, and keep your context for the 
 
 Use the Task tool when:
 - Parallel exploration: two or more independent directions (for example one subagent per subsystem, or backend + frontend + tests). Start one Task per direction in the same assistant message.
-- Adversarial review: after implementing a non-trivial change, delegate a read-only review of it to code-reviewer before you commit.
-- Implementation: a multi-file change with a complete, self-contained spec — delegate to fixer, which may write inside the workspace.
-- Context economy: wide searches, long logs, multi-file surveys whose intermediate output you do not need — explorer / test-runner.
+- Adversarial review: after implementing a non-trivial change, delegate a read-only review of it to reviewer before you commit.
+- Implementation: a multi-file change or feature with a complete, self-contained spec — delegate to coder, which may write inside the workspace.
+- Context economy: wide searches, long logs, multi-file surveys whose intermediate output you do not need — researcher / tester.
 - Batch sharding: the same bounded job repeated over many independent targets.
 
 Delegation rules:
 - Task returns immediately with a delegation id. Do not sit idle: keep working on your own independent line, then converge with TaskWait (defaults to mode="any" to converge early) when you need results, TaskList to check progress, TaskStop to stop.
 - Always fill Task's \`description\` so the user sees what each subagent is doing. Integrate findings and say which subagent produced what.
+- In \`Task\` calls, ALWAYS pass the exact English id to \`agent\` (e.g., "coder", "reviewer", "tester", "researcher", "designer").
+- When communicating with the user in Chinese, refer to subagents consistently using their standard canonical titles:
+  - 代码开发 (coder)
+  - 代码复核 (reviewer)
+  - 测试验证 (tester)
+  - 代码调研 (researcher)
+  - 界面设计 (designer)
+  Avoid inventing ad-hoc names like "探查代理" or "审查员".
 - You may talk to the user while subagents run. Do not TaskStop unless you have decided the work should not continue. The runtime keeps them alive and delivers their reports incrementally as each finishes — ending your turn does not abort them.
 - Never delegate what you can finish in a couple of tool calls, and never delegate anything that needs the user.`,
             ...(this.subagentModelSummary()
@@ -3900,7 +3910,7 @@ Delegation rules:
       label: "Task",
       description: [
         "Start one subagent in the background and return immediately; you keep working while it runs, then converge with TaskWait when you need its report.",
-        "Use it when the work is separable: parallel exploration of independent directions (one Task per direction in the same assistant message), a multi-file implementation with a complete spec (fixer), an adversarial read-only review of a change you just made (code-reviewer), or a wide search / long log / multi-file survey whose intermediate output would otherwise fill this context (explorer, test-runner).",
+        "Use it when the work is separable: parallel exploration of independent directions (one Task per direction in the same assistant message), a multi-file implementation or feature with a complete spec (coder), an adversarial read-only review of a change you just made (reviewer), or a wide search / long log / multi-file survey whose intermediate output would otherwise fill this context (researcher, tester).",
         "Do not delegate what you can finish in a couple of tool calls, and do not delegate anything that needs the user — a subagent cannot ask a question or propose a plan on your behalf.",
         ...(this.availableSubagentModelKeys().length
           ? [
@@ -3947,7 +3957,7 @@ Delegation rules:
       execute: async (toolCallId, params) => {
         const requested = isRecord(params) ? String(params.agent ?? "") : "";
         const definition = this.subagents.find(
-          (candidate) => candidate.name === normalizeSubagentName(requested),
+          (candidate) => subagentNameMatches(candidate.name, requested),
         );
         if (!definition) {
           return this.subagentToolError(
