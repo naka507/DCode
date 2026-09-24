@@ -37,8 +37,8 @@ const bundledPanelSources = [
 // repository (or the sibling that owns them) rather than from a copy.
 const shippedPanelSources = await Promise.all(
   [
-    "../resources/plugins/pi.file-manager/views/index.html",
-    "../resources/plugins/pi.browser/views/browser.html",
+    "../resources/plugins/files/views/index.html",
+    "../resources/plugins/browser/views/browser.html",
   ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
 );
 

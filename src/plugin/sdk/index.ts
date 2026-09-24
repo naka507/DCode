@@ -22,7 +22,7 @@ import {
  * Manifest id shape frozen by docs/spec/07-plugins/02-plugin-manifest-schema.md:
  * a lowercase dotted namespace such as `demo.hello` or `pi.browser`.
  */
-export const PLUGIN_ID_PATTERN = /^[a-z0-9]+(\.[a-z0-9_-]+)+$/;
+export const PLUGIN_ID_PATTERN = /^[a-z0-9]+([._-][a-z0-9_-]+)*$/;
 
 /** `author` may be a display string or a contact object (manifest schema §2). */
 export type PluginManifestAuthor =

@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "id": "pi.file-manager",
-  "name": "文件管理器",
+  "id": "files",
+  "name": "文件",
   "version": "0.5.2",
   "description": "在右侧工作面板中浏览、查看并编辑当前项目的文件：完整目录树（图标随文件类型变化）、左右分栏（左侧文件列表可整块收起）、代码高亮编辑与保存、Markdown 预览、图片与音视频查看、CSV/JSON 结构化查看、右键新建、重命名/移动、按文件名搜索、项目组里的多文件夹切换（宿主把一个项目注册成多个本地文件夹时，面板左上角的文件夹名就是切换器，按项目记住看的是哪个 folder），以及宿主驱动的打开请求——宿主可以让视图直接打开某个文件，包括项目之外的会话临时 / 附件路径。",
   "i18n": {
     "en": {
-      "name": "File Manager",
+      "name": "Files",
       "description": "Browse, view and edit the open project in the right work panel: a full directory tree with per-file-type icons, a left file list that can be collapsed as a whole, syntax-highlighted editing, a Markdown preview, image and media viewing, CSV/JSON structured views, read-only SQLite browsing with a SQL query box, a context menu for creating and renaming, filename search, switching between the folders of a multi-folder project (the folder name in the header opens the list of folders and the choice is remembered per project), and host-driven open requests for a single file (including session scratch and attachment paths outside the project).",
       "safetyNotes": "Databases are opened strictly read-only (readOnly + PRAGMA query_only) and the query box only accepts single read-only statements, so a database can be browsed but never modified. fs.read is declared only for the two host-mediated actions \"open with default app\" and \"show in folder\" (same permission and scope as the bundled Files view); the plugin's own reading and writing goes through Node's fs inside the plugin's own process — the host permission gateway does not mediate these calls, and the manifest cannot declare a whole-tree write. Root-relative paths are confined by the plugin itself to the selected registered folder root of the project: resolved paths must stay inside that root (symlink and junction escapes are refused), and credential paths (.env*, .ssh/, *.pem, .git/**) are refused. When a project is registered as several local folders, the containment base is still exactly one of those roots at a time — never their union — and an absolute path the host asks this view to open that lies under another root of the same project is accepted by first switching the base to the containing root and then resolving that path relative to it, with the same containment checks applied. One exception is deliberate and is NOT covered by that containment guarantee: when the host asks this view to open a file it picked itself outside the project (a session scratch or attachment path), the request is an absolute OS path and the plugin reads and writes it with raw Node fs, with no root containment; the credential deny list is still enforced for those paths (checked against the raw, the normalised and the realpath form), and they are still written atomically and audited. Saves are atomic (temp file + rename), and overwriting a file changed outside the editor asks first. Images and media are read up to their own size limits (8 MiB / 24 MiB) and handed to the view as base64 data URIs; binaries such as zip or exe are never decoded, only reported as unsupported. No network access; the plugin data directory only holds settings and a write audit log."
     },
     "zh-CN": {
-      "name": "文件管理器",
+      "name": "文件",
       "description": "在右侧工作面板中浏览、查看并编辑当前项目的文件：完整目录树（图标随文件类型变化）、左右分栏（左侧文件列表可整块收起，宿主请求打开文件时自动收起）、代码高亮编辑与保存、Markdown 预览、图片与音视频查看、CSV/JSON 结构化查看、SQLite 只读浏览与 SQL 查询、右键新建、重命名/移动、按文件名搜索、项目组里的多文件夹切换（宿主把一个项目注册成多个本地文件夹时，面板左上角的文件夹名就是切换器，按项目记住看的是哪个 folder），以及宿主驱动的打开请求——宿主可以让视图直接打开某个文件，包括项目之外的会话临时 / 附件路径。",
       "safetyNotes": "数据库一律以只读方式打开（readOnly + PRAGMA query_only），SQL 框只接受单条只读语句，因此只能浏览、绝无修改；fs.read 仅用于「用默认应用打开」与「在文件夹中显示」这两个由宿主代为执行的动作（权限与范围同内置的 Files 视图），插件自身的读写仍走自己进程内的 Node fs——宿主的权限网关不介入这些调用，manifest 也无法申报「整树写入」。路径的访问范围由插件自身限定在项目**当前选中的那个已注册文件夹根**（folder root）内：解析后的路径必须仍在根内（拒绝符号链接与 junction 逃逸）、拒绝凭据类路径（.env*、.ssh/、*.pem、.git/**）。项目注册了多个文件夹时，包含基点仍然是**其中一个** root、绝不放大成整个组的并集；宿主请求打开的绝对路径若落在同项目的另一个 root 下，插件会先把基点切到包含它的那个 root，再按「相对该 root」解析，根内包含校验一条不减。另有一条刻意的例外，它不在上面这条包含保证之内：宿主可以要求本视图打开由宿主自己选定的项目外文件（会话临时目录 / 附件的绝对路径），插件对这些路径走原生 Node fs 读写、不做根内包含校验；凭据类路径黑名单在两种模式下都照旧全量生效（原始字符串、规范化后与 realpath 之后各查一遍），这类路径同样原子写并记审计。保存采用原子写（临时文件 + 重命名）、覆盖在编辑器外被改动过的文件前会先询问。图片与音视频按各自上限（8 MiB / 24 MiB）读取后以 base64 data URI 交给视图；zip、exe 这类二进制只报「不支持预览」，不做任何解码。无网络访问；插件数据目录只保存设置与写入审计日志。"
     }
@@ -26,7 +26,7 @@
     "views": [
       {
         "id": "manager",
-        "title": { "en": "File Manager", "zh-CN": "文件管理器" },
+        "title": { "en": "Files", "zh-CN": "文件" },
         "icon": "folder",
         "entry": "views/index.html",
         "order": 40

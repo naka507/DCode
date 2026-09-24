@@ -4,7 +4,7 @@ import { BrowserCdp } from "./browser-cdp";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-export const BROWSER_PLUGIN_ID = "pi.browser";
+export const BROWSER_PLUGIN_ID = "browser";
 export const BROWSER_VIEW_ID = "browser";
 
 export type BrowserRect = {
@@ -222,7 +222,7 @@ export class BrowserHost {
       return {
         ok: false,
         content:
-          "BrowserPreview: the Browser plugin is disabled. Enable pi.browser in Plugins to preview HTML.",
+          "BrowserPreview: the Browser plugin is disabled. Enable browser in Plugins to preview HTML.",
       };
     }
     this.rememberLocation(sessionId, path);

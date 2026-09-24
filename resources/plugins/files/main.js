@@ -3,7 +3,7 @@
 /**
  * 文件管理器 — dcode 插件主进程
  *
- * 插件 id: pi.file-manager
+ * 插件 id: files
  * 视图:    contributes.views[0] → views/index.html（右侧工作面板）
  *
  * 为什么用原生 node:fs：

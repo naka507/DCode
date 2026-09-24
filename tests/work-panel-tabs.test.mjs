@@ -69,8 +69,8 @@ test("new tabs are unique launcher pages and replace themselves with a tool", ()
     browserPluginTab("https://example.com"),
   );
 
-  assert.deepEqual(replaced.tabs.map((tab) => tab.id), [first.id, "plugin:pi.browser/browser"]);
-  assert.equal(replaced.activeTabId, "plugin:pi.browser/browser");
+  assert.deepEqual(replaced.tabs.map((tab) => tab.id), [first.id, "plugin:browser/browser"]);
+  assert.equal(replaced.activeTabId, "plugin:browser/browser");
   assert.equal(replaced.tabs.find((tab) => tab.id === first.id)?.kind, "new");
 });
 
@@ -156,7 +156,7 @@ test("only plugin views are launchable tools", () => {
   assert.equal(isToolWorkPanelTab(browserPluginTab()), true);
   assert.equal(isToolWorkPanelTab(toolWorkPanelTab("review")), false);
   assert.equal(isToolWorkPanelTab(fileWorkPanelTab("README.md")), false);
-  assert.equal(isToolWorkPanelTab(pluginWorkPanelTab("pi.file-manager", "manager")), true);
+  assert.equal(isToolWorkPanelTab(pluginWorkPanelTab("files", "manager")), true);
   assert.equal(isKnownWorkPanelTab({ id: "browser", kind: "browser" }), false);
   assert.equal(isKnownWorkPanelTab(newWorkPanelTab()), true);
 });
@@ -165,19 +165,19 @@ test("a host-chosen project file prefers the bundled file view", () => {
   // A plan or goal artifact is project markdown the host opens for the user, so
   // it lands in the same view the user's own file work uses. The bundle is
   // never required: without that view the host file tab remains.
-  const fileView = { pluginId: "pi.file-manager", viewId: "manager" };
+  const fileView = { pluginId: "files", viewId: "manager" };
   const openedInView = preferredFileWorkPanelTab("plans/plan.md", [fileView]);
 
   assert.equal(hasPluginView([fileView], FILE_MANAGER_PLUGIN_TAB), true);
   assert.equal(
     hasPluginView(
-      [{ pluginId: "pi.browser", viewId: "browser" }],
+      [{ pluginId: "browser", viewId: "browser" }],
       FILE_MANAGER_PLUGIN_TAB,
     ),
     false,
   );
   assert.equal(openedInView.kind, "plugin");
-  assert.equal(openedInView.id, "plugin:pi.file-manager/manager");
+  assert.equal(openedInView.id, "plugin:files/manager");
   assert.equal(openedInView.location, "plans/plan.md");
   assert.deepEqual(
     preferredFileWorkPanelTab("plans/plan.md", []),

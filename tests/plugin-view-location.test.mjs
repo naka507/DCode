@@ -183,7 +183,7 @@ test("the view host routes every request through those rules", () => {
   assert.ok(send > reload, "a live view must be reached by event, not by navigation");
 });
 
-test("pi.browser keeps its own location channel", () => {
+test("browser keeps its own location channel", () => {
   // The browser view owns an address bar and its own history, so its location
   // is routed through `browserHost` and must not also be stamped into the
   // view's entry URL as if the host knew better.

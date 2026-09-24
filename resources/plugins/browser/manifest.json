@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "pi.browser",
+  "id": "browser",
   "name": "Browser",
   "version": "1.0.0",
   "description": "Work-panel browser chrome and agent CDP against the host guest page.",

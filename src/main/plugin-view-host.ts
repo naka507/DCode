@@ -63,7 +63,7 @@ export type PluginViewOpenRequest = {
    * (D452). The value is
    * opaque to the host: it travels as the entry URL's `piViewOpen` query
    * parameter on creation and as the `view:open` event afterwards, and the
-   * plugin decides what it means. `pi.browser` uses its own chrome channel
+   * plugin decides what it means. `browser` uses its own chrome channel
    * instead and never receives this.
    */
   location?: string;

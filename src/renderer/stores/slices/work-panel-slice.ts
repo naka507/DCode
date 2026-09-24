@@ -8,6 +8,7 @@ import { api } from "../../lib/api";
 import {
   activateWorkPanelTabState,
   browserPluginTab,
+  BROWSER_PLUGIN_TAB,
   closeWorkPanelTabState,
   emptyWorkPanelContext,
   fileWorkPanelTab,
@@ -367,7 +368,9 @@ export function createWorkPanelSlice({
   },
   openUrlInWorkPanel: (url) => {
     const hasBrowser = get().pluginViews.some(
-      (view) => view.pluginId === "pi.browser" && view.viewId === "browser",
+      (view) =>
+        view.pluginId === BROWSER_PLUGIN_TAB.pluginId &&
+        view.viewId === BROWSER_PLUGIN_TAB.viewId,
     );
     if (!hasBrowser) {
       if (/^https?:\/\//i.test(url.trim())) {

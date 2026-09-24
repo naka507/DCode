@@ -93,7 +93,7 @@ export function pluginWorkPanelTab(pluginId: string, viewId: string): WorkPanelT
 }
 
 export const BROWSER_PLUGIN_TAB = {
-  pluginId: "pi.browser",
+  pluginId: "browser",
   viewId: "browser",
 } as const;
 
@@ -114,7 +114,7 @@ export function browserPluginTab(location?: string): WorkPanelTab {
  * launcher list, and callers fall back to the host file tab.
  */
 export const FILE_MANAGER_PLUGIN_TAB = {
-  pluginId: "pi.file-manager",
+  pluginId: "files",
   viewId: "manager",
 } as const;
 

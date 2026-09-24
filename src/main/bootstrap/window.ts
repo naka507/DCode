@@ -1357,7 +1357,7 @@ export async function createWindow({
             await setTheme("light");
             await new Promise((r) => setTimeout(r, 250));
             await windowState.mainWindow!.webContents.executeJavaScript(`
-              document.querySelector('[data-work-panel-launcher-item="pi.browser/browser"]')?.dispatchEvent(
+              document.querySelector('[data-work-panel-launcher-item="browser/browser"]')?.dispatchEvent(
                 new MouseEvent('click', { bubbles: true }),
               )
             `);
