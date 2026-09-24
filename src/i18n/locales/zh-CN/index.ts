@@ -322,6 +322,7 @@ export const zhCN = {
     usageContextLabel: "上下文",
     usageContextCapacity: "上下文容量",
     usageBreakdownMessages: "消息",
+    usageBreakdownReasoning: "思考过程",
     usageBreakdownSystemTools: "系统工具",
     usageBreakdownSystemPrompt: "系统提示词",
     usageBreakdownSkills: "技能",

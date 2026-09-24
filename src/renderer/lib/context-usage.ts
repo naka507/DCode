@@ -381,7 +381,14 @@ export function formatContextCapacityTokens(
 }
 
 export type ContextBreakdownItem = {
-  key: "messages" | "systemTools" | "systemPrompt" | "skills" | "mcp" | "other";
+  key:
+    | "messages"
+    | "reasoning"
+    | "systemTools"
+    | "systemPrompt"
+    | "skills"
+    | "mcp"
+    | "other";
   labelKey: string;
   colorClass: string;
   tokens: number;
@@ -397,7 +404,8 @@ export type ContextBreakdownOptions = {
 
 /**
  * Categorize current context occupancy into:
- *  - messages (User messages + Assistant responses + Reasoning)
+ *  - messages (User messages + Assistant responses)
+ *  - reasoning (Thinking / reasoning tokens from model)
  *  - systemTools (Built-in tools: Bash, ReadFile, EditFile, etc.)
  *  - systemPrompt (Base system prompt)
  *  - skills (Tools starting with skill_)
@@ -435,24 +443,30 @@ export function calculateContextBreakdown(
     }
   }
 
+  const reasoningTokens = positiveTokenCount(usage.reasoningTokens);
   const safePromptTokens = Math.max(0, systemPromptTokens);
-  const knownToolsAndPrompt =
-    systemToolTokens + skillTokens + mcpTokens + safePromptTokens;
+  const knownNonMessageTokens =
+    systemToolTokens + skillTokens + mcpTokens + safePromptTokens + reasoningTokens;
 
   let messageTokens = 0;
   let otherTokens = 0;
 
   if (totalOccupancy > 0) {
-    if (knownToolsAndPrompt < totalOccupancy) {
-      messageTokens = totalOccupancy - knownToolsAndPrompt;
+    if (knownNonMessageTokens < totalOccupancy) {
+      messageTokens = totalOccupancy - knownNonMessageTokens;
     } else {
-      const overflowRatio = totalOccupancy / Math.max(1, knownToolsAndPrompt);
+      const overflowRatio = totalOccupancy / Math.max(1, knownNonMessageTokens);
       systemToolTokens = Math.round(systemToolTokens * overflowRatio);
       skillTokens = Math.round(skillTokens * overflowRatio);
       mcpTokens = Math.round(mcpTokens * overflowRatio);
       messageTokens = Math.max(
         0,
-        totalOccupancy - systemToolTokens - skillTokens - mcpTokens,
+        totalOccupancy -
+          systemToolTokens -
+          skillTokens -
+          mcpTokens -
+          safePromptTokens -
+          reasoningTokens,
       );
     }
   }
@@ -468,6 +482,12 @@ export function calculateContextBreakdown(
       labelKey: "chat.usageBreakdownMessages",
       colorClass: "dot-messages",
       tokens: messageTokens,
+    },
+    {
+      key: "reasoning",
+      labelKey: "chat.usageBreakdownReasoning",
+      colorClass: "dot-reasoning",
+      tokens: reasoningTokens,
     },
     {
       key: "systemTools",

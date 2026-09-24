@@ -1197,6 +1197,7 @@
 
 .context-inspector-progress-track {
   position: relative;
+  display: flex;
   width: 100%;
   height: 6px;
   border-radius: var(--radius-full);
@@ -1242,26 +1243,42 @@
   flex-shrink: 0;
 }
 
+.context-inspector-progress-segment {
+  height: 100%;
+  transition: width 200ms ease-out;
+}
+
+.context-inspector-progress-segment.dot-messages,
 .context-breakdown-dot.dot-messages {
   background-color: #38bdf8;
 }
 
+.context-inspector-progress-segment.dot-reasoning,
+.context-breakdown-dot.dot-reasoning {
+  background-color: #a855f7;
+}
+
+.context-inspector-progress-segment.dot-system-tools,
 .context-breakdown-dot.dot-system-tools {
   background-color: #3b82f6;
 }
 
+.context-inspector-progress-segment.dot-system-prompt,
 .context-breakdown-dot.dot-system-prompt {
   background-color: #60a5fa;
 }
 
+.context-inspector-progress-segment.dot-skills,
 .context-breakdown-dot.dot-skills {
   background-color: #818cf8;
 }
 
+.context-inspector-progress-segment.dot-mcp,
 .context-breakdown-dot.dot-mcp {
   background-color: #64748b;
 }
 
+.context-inspector-progress-segment.dot-other,
 .context-breakdown-dot.dot-other {
   background-color: #475569;
 }

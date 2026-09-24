@@ -96,6 +96,26 @@ const breakdown = computed(() =>
   }),
 );
 
+const visibleBreakdown = computed(() =>
+  breakdown.value.filter(
+    (item) =>
+      item.tokens > 0 ||
+      item.key === "messages" ||
+      item.key === "systemPrompt",
+  ),
+);
+
+const progressSegments = computed(() => {
+  const windowTokens = Math.max(1, props.contextWindow);
+  return breakdown.value
+    .filter((item) => item.tokens > 0)
+    .map((item) => ({
+      key: item.key,
+      colorClass: item.colorClass,
+      barPercent: (item.tokens / windowTokens) * 100,
+    }));
+});
+
 const usedCapacityText = computed(() =>
   formatContextCapacityTokens(context.value.usedTokens, locale.value),
 );
@@ -481,14 +501,22 @@ watch(
 
         <div class="context-inspector-progress-track">
           <div
+            v-if="progressSegments.length === 0"
             class="context-inspector-progress-fill"
             :style="{ width: `${context.usedPercent}%` }"
+          />
+          <div
+            v-for="item in progressSegments"
+            :key="item.key"
+            class="context-inspector-progress-segment"
+            :class="item.colorClass"
+            :style="{ width: `${item.barPercent}%` }"
           />
         </div>
 
         <div class="context-inspector-breakdown">
           <div
-            v-for="item in breakdown"
+            v-for="item in visibleBreakdown"
             :key="item.key"
             class="context-breakdown-row"
           >

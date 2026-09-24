@@ -344,7 +344,47 @@ test("calculateContextBreakdown groups tools, prompt, messages, and computes per
   assert.equal(byKey.systemPrompt.formattedPercent, "0.7%");
   assert.equal(byKey.messages.tokens, 804);
   assert.equal(byKey.messages.formattedPercent, "80.4%");
+  assert.equal(byKey.reasoning.tokens, 0);
+  assert.equal(byKey.reasoning.formattedPercent, "0%");
   assert.equal(byKey.other.tokens, 0);
   assert.equal(byKey.other.formattedPercent, "0%");
+});
+
+test("calculateContextBreakdown separates reasoning tokens from messages", () => {
+  const breakdown = calculateContextBreakdown({
+    usage: {
+      inputTokens: 1000,
+      outputTokens: 200,
+      reasoningTokens: 800,
+      totalTokens: 2000,
+    },
+    tools: [
+      {
+        id: "1",
+        role: "tool",
+        content: "",
+        createdAt: "",
+        toolName: "Read",
+        toolUsage: { argumentTokens: 50, resultTokens: 150, totalTokens: 200, estimated: true },
+      },
+    ],
+    systemPromptTokens: 100,
+  });
+
+  const byKey = Object.fromEntries(breakdown.map((item) => [item.key, item]));
+
+  // Total occupancy = 1000 + 200 + 800 = 2000
+  // systemTools: 200 -> 10%
+  // systemPrompt: 100 -> 5%
+  // reasoning: 800 -> 40%
+  // messages: 2000 - 200 - 100 - 800 = 900 -> 45%
+  assert.equal(byKey.systemTools.tokens, 200);
+  assert.equal(byKey.systemTools.formattedPercent, "10%");
+  assert.equal(byKey.systemPrompt.tokens, 100);
+  assert.equal(byKey.systemPrompt.formattedPercent, "5%");
+  assert.equal(byKey.reasoning.tokens, 800);
+  assert.equal(byKey.reasoning.formattedPercent, "40%");
+  assert.equal(byKey.messages.tokens, 900);
+  assert.equal(byKey.messages.formattedPercent, "45%");
 });
 

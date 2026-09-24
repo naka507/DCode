@@ -6861,6 +6861,18 @@ Delegation rules:
             );
           }
           const usage = usageFromPi((event.message as any).usage as Usage | undefined);
+          if (
+            usage &&
+            usage.reasoningTokens === undefined &&
+            nextThinking &&
+            nextThinking.trim().length > 0
+          ) {
+            const estimatedReasoning = Math.ceil(nextThinking.length / 3);
+            usage.reasoningTokens =
+              usage.outputTokens > 0
+                ? Math.min(usage.outputTokens, estimatedReasoning)
+                : estimatedReasoning;
+          }
           const systemPromptText =
             this.agent?.state?.systemPrompt ?? this.composedSystemPrompt ?? "";
           const systemPromptTokens =

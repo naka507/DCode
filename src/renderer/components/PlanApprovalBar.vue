@@ -35,11 +35,12 @@
  */
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import type {
-  GlobalPermissionMode,
-  PlanProposal,
-  PluginViewMeta,
-  ProposalKind,
+import {
+  parsePlanStages,
+  type GlobalPermissionMode,
+  type PlanProposal,
+  type PluginViewMeta,
+  type ProposalKind,
 } from "@dcode/shared";
 import { currentAppState, useAppStore } from "../stores/app-store";
 import { preferredFileWorkPanelTab } from "../lib/work-panel-tabs";
@@ -99,6 +100,9 @@ const isPending = computed(() => props.proposal.status === "pending");
 const busy = computed(() => resolving.value);
 const pluginViews = computed<PluginViewMeta[]>(
   () => store.appState?.pluginViews ?? [],
+);
+const stageSummary = computed(() =>
+  parsePlanStages(props.proposal.markdown, props.proposal.executionState),
 );
 
 watch(
@@ -244,6 +248,30 @@ function onMenuKeyDown(event: KeyboardEvent) {
             {{ artifactPath }}
           </span>
         </button>
+        <div v-if="stageSummary" class="plan-stages-track">
+          <div
+            v-for="(phase, idx) in stageSummary.phases"
+            :key="phase.id"
+            class="plan-stage-node"
+            :data-status="phase.status"
+            :title="`${phase.title} (${phase.steps.filter((s) => s.status === 'completed').length}/${phase.steps.length})`"
+          >
+            <span class="plan-stage-badge">
+              <span v-if="phase.status === 'completed'">✓</span>
+              <span v-else-if="phase.status === 'in_progress'" class="plan-stage-pulse">●</span>
+              <span v-else>{{ idx + 1 }}</span>
+            </span>
+            <span class="plan-stage-title">{{ phase.title }}</span>
+            <span
+              v-if="idx < stageSummary.phases.length - 1"
+              class="plan-stage-connector"
+              aria-hidden="true"
+            />
+          </div>
+          <span class="plan-stage-progress-badge">
+            {{ stageSummary.completedSteps }}/{{ stageSummary.totalSteps }}
+          </span>
+        </div>
       </div>
     </div>
     <div v-if="isPending" class="plan-approval-actions">

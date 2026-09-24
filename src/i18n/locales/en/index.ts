@@ -328,6 +328,7 @@ export const en = {
     usageContextLabel: "Context",
     usageContextCapacity: "Context capacity",
     usageBreakdownMessages: "Messages",
+    usageBreakdownReasoning: "Reasoning",
     usageBreakdownSystemTools: "System tools",
     usageBreakdownSystemPrompt: "System prompt",
     usageBreakdownSkills: "Skills",
