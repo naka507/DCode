@@ -18,6 +18,7 @@
 import {
   ErrorCodes,
   IPC,
+  type RemoteControlHostStatus,
   type RemoteHostBootstrapRequest,
   type RemoteHostBootstrapResult,
   type RemoteHostPairRequest,
@@ -31,6 +32,7 @@ import {
   type RemoteHostsBoot,
 } from "../bootstrap/remote-hosts";
 import { exchangePairingToken } from "../remote/racp-remote-host-client";
+import { getActiveRemoteControlHost } from "../remote/remote-control-host";
 import type { IpcRegistrar } from "./types";
 
 export type RegisterRemoteHostIpcOptions = {
@@ -158,6 +160,39 @@ export function registerRemoteHostIpc(options: RegisterRemoteHostIpcOptions): vo
       }
       await boot.removeHost(hostKey);
       return { ok: true };
+    },
+  );
+
+  registrar.handle(
+    IPC.invoke.remoteControlGetHostStatus,
+    async (): Promise<RemoteControlHostStatus> => {
+      const host = getActiveRemoteControlHost();
+      if (!host) {
+        return { enabled: false, localAddresses: ["127.0.0.1"], connectedClients: 0 };
+      }
+      return host.getStatus();
+    },
+  );
+
+  registrar.handle(
+    IPC.invoke.remoteControlSetHostEnabled,
+    async (request: { enabled: boolean }): Promise<RemoteControlHostStatus> => {
+      const host = getActiveRemoteControlHost();
+      if (!host) {
+        throw new Error("remote control host service is not initialized");
+      }
+      return host.setEnabled(Boolean(request?.enabled));
+    },
+  );
+
+  registrar.handle(
+    IPC.invoke.remoteControlGeneratePairingToken,
+    async (): Promise<RemoteControlHostStatus> => {
+      const host = getActiveRemoteControlHost();
+      if (!host) {
+        throw new Error("remote control host service is not initialized");
+      }
+      return host.generatePairingToken();
     },
   );
 }

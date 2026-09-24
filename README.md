@@ -58,6 +58,7 @@ DCode adheres to a strictly defined multi-process architecture with clean owners
 - **Silent Microcompact Policy**: Intelligent trimming for historical tool results. Retains the latest tool call outputs while silently replacing older bulky outputs (`ReadFile`, `Bash`, `Grep`, `Glob`) with lightweight placeholders, slashing 50%~80% context tokens locally without requiring an expensive LLM summarization roundtrip.
 - **Plan & Goal Workflow Stage Stepper**: Automatically parses multi-stage execution phases and step checklists from Markdown plans within the approval bar, rendering an interactive pipeline stepper (completed, in-progress, pending) and progress meter.
 - **Modern UI Design System & Typography**: Standardized `--text-ui-*` semantic type ramp and optimized CJK font stack (Microsoft YaHei UI, PingFang SC, Noto Sans CJK) for monospace code and terminal blocks across platforms, eliminating jagged glyphs on Windows.
+- **Local Remote Control Host**: Built-in RACP-WS host service in DCode desktop, enabling secure remote control from mobile devices or other clients across the LAN. Features single-use pairing token minting (`ppt1....`), real-time connected device metrics, and seamless token regeneration from Settings.
 
 ---
 

@@ -136,3 +136,14 @@ export type RemoteHostBootstrapResult = {
   /** Ordered bootstrap steps that completed, for a Settings progress line. */
   steps: string[];
 };
+
+export type RemoteControlHostStatus = {
+  enabled: boolean;
+  port?: number;
+  localAddresses: string[];
+  pairingToken?: string;
+  pairingUrl?: string;
+  connectedClients: number;
+  expiresAt?: string;
+};
+

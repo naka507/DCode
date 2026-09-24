@@ -18,6 +18,10 @@ import { applyNetworkProxyFromAppSettings } from "../network-proxy";
 import { readCloseBehavior } from "../window-preferences";
 import { createAgentHostBridge, type AgentHostBridge } from "../agent-host-bridge";
 import { createBackendRouter, type BackendRouter } from "../remote/backend-router";
+import {
+  RemoteControlHostService,
+  setActiveRemoteControlHost,
+} from "../remote/remote-control-host";
 import { createRemoteHostsBoot, setActiveRemoteHostsBoot } from "./remote-hosts";
 import {
   createMcpControlController,
@@ -263,6 +267,12 @@ export function registerApplicationStartup(deps: StartupDependencies): void {
       },
       log: (level, message, data) => logger.app("runtime", level, message, { data }),
     });
+    const remoteControlHost = new RemoteControlHostService({
+      getAgentHostBridge: () => state.agentHostBridge,
+      log: (level, message, data) =>
+        logger.app("runtime", level, message, { data: formatRemoteLogData(data) }),
+    });
+    setActiveRemoteControlHost(remoteControlHost);
     const control = createMcpControlController({
       invoke: invokeIpc,
       channels: IPC.invoke,

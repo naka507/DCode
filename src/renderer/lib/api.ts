@@ -100,6 +100,7 @@ import type {
   RemoteHostPairRequest,
   RemoteHostPairResult,
   RemoteHostSummary,
+  RemoteControlHostStatus,
   UpdateState,
   WindowControlAction,
   TraySessionPreferences,
@@ -1332,6 +1333,13 @@ export const api = {
   /** Close and drop a paired host by its stable routing key. */
   removeRemoteHost: (hostKey: string) =>
     invoke<{ ok: true }>(IPC.invoke.remoteHostRemove, { hostKey }),
+  // --- Remote control host (server mode for mobile/remote control) -----------
+  getRemoteControlStatus: () =>
+    invoke<RemoteControlHostStatus>(IPC.invoke.remoteControlGetHostStatus),
+  setRemoteControlEnabled: (enabled: boolean) =>
+    invoke<RemoteControlHostStatus>(IPC.invoke.remoteControlSetHostEnabled, { enabled }),
+  generateRemoteControlPairingToken: () =>
+    invoke<RemoteControlHostStatus>(IPC.invoke.remoteControlGeneratePairingToken),
   onSessionsChanged: (
     listener: (event: {
       reason?: string;

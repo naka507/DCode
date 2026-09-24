@@ -13,12 +13,17 @@
  */
 import { computed, onMounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import type { RemoteHostSshAuth, RemoteHostSummary } from "@dcode/shared";
+import type {
+  RemoteControlHostStatus,
+  RemoteHostSshAuth,
+  RemoteHostSummary,
+} from "@dcode/shared";
 import { api } from "../../lib/api";
 import { useAppStore } from "../../stores/app-store";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import Field from "../ui/Field.vue";
+import HelpIcon from "../ui/HelpIcon.vue";
 import Input from "../ui/Input.vue";
 import PasswordInput from "../ui/PasswordInput.vue";
 
@@ -64,6 +69,9 @@ const sshForm = reactive<SshForm>({ ...EMPTY_SSH_FORM });
 const installing = ref(false);
 const addMode = ref<AddMode>("ssh");
 
+const controlStatus = ref<RemoteControlHostStatus | null>(null);
+const controlBusy = ref(false);
+
 /** `Input.vue` follows the `:value` + `@input` convention, not `v-model`. */
 function fieldValue(event: Event): string {
   return (event.target as HTMLInputElement).value;
@@ -79,7 +87,61 @@ async function refresh() {
   }
 }
 
-onMounted(() => void refresh());
+async function refreshControl() {
+  try {
+    controlStatus.value = await api.getRemoteControlStatus();
+  } catch {
+    controlStatus.value = null;
+  }
+}
+
+async function toggleControl() {
+  if (!controlStatus.value || controlBusy.value) return;
+  controlBusy.value = true;
+  try {
+    const next = !controlStatus.value.enabled;
+    controlStatus.value = await api.setRemoteControlEnabled(next);
+    store.appState?.showToast(
+      next
+        ? t("settings.remoteHosts.controlRunning")
+        : t("settings.remoteHosts.controlStopped"),
+      { variant: "info" },
+    );
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : String(caught);
+    store.appState?.showToast(message, { variant: "error" });
+  } finally {
+    controlBusy.value = false;
+  }
+}
+
+async function regenerateToken() {
+  if (controlBusy.value) return;
+  controlBusy.value = true;
+  try {
+    controlStatus.value = await api.generateRemoteControlPairingToken();
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : String(caught);
+    store.appState?.showToast(message, { variant: "error" });
+  } finally {
+    controlBusy.value = false;
+  }
+}
+
+async function copyText(text: string | undefined, toastKey: string) {
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    store.appState?.showToast(t(`settings.remoteHosts.${toastKey}`), { variant: "info" });
+  } catch {
+    /* ignore clipboard failure */
+  }
+}
+
+onMounted(() => {
+  void refresh();
+  void refreshControl();
+});
 
 async function submit() {
   const url = form.url.trim();
@@ -468,6 +530,80 @@ const pairSubmitDisabled = computed(
             </Button>
           </div>
         </form>
+      </div>
+    </section>
+
+    <!-- Local Remote Control Host Service -->
+    <section class="settings-card-block">
+      <div class="settings-card-heading-row settings-remote-host-control-heading">
+        <div class="settings-card-heading-help">
+          <h3 class="settings-card-heading">{{ t("settings.remoteHosts.controlTitle") }}</h3>
+          <HelpIcon :label="t('settings.remoteHosts.controlDesc')" />
+        </div>
+        <button
+          type="button"
+          class="settings-toggle"
+          :class="{ on: controlStatus?.enabled, 'is-busy': controlBusy }"
+          role="switch"
+          :aria-checked="controlStatus?.enabled"
+          :aria-label="t('settings.remoteHosts.controlEnable')"
+          :disabled="controlBusy || !controlStatus"
+          @click="void toggleControl()"
+        >
+          <span class="settings-toggle-thumb" />
+        </button>
+      </div>
+
+      <div v-if="controlStatus?.enabled" class="settings-panel">
+        <div class="settings-remote-control-panel">
+          <div class="settings-remote-control-grid">
+            <div class="settings-remote-control-item">
+              <span class="settings-remote-control-label">{{ t("settings.remoteHosts.controlStatus") }}</span>
+              <div class="settings-remote-control-val">
+                <Badge tone="success">{{ t("settings.remoteHosts.controlRunning") }}</Badge>
+                <span class="settings-remote-control-meta">
+                  {{ t("settings.remoteHosts.controlPort") }}: {{ controlStatus.port }} · {{ controlStatus.connectedClients }} {{ t("settings.remoteHosts.controlConnectedClients") }}
+                </span>
+              </div>
+            </div>
+
+            <div v-if="controlStatus.localAddresses?.length" class="settings-remote-control-item">
+              <span class="settings-remote-control-label">{{ t("settings.remoteHosts.controlAddresses") }}</span>
+              <div class="settings-remote-control-addrs">
+                <code v-for="addr in controlStatus.localAddresses" :key="addr" class="settings-remote-control-code">
+                  {{ addr }}
+                </code>
+              </div>
+            </div>
+
+            <div v-if="controlStatus.pairingToken" class="settings-remote-control-item">
+              <span class="settings-remote-control-label">{{ t("settings.remoteHosts.controlPairingToken") }}</span>
+              <div class="settings-remote-control-row">
+                <code class="settings-remote-control-code">{{ controlStatus.pairingToken }}</code>
+                <div class="settings-remote-control-actions">
+                  <Button variant="ghost" size="sm" type="button" @click="void copyText(controlStatus?.pairingToken, 'controlTokenCopied')">
+                    {{ t("settings.remoteHosts.controlCopyToken") }}
+                  </Button>
+                  <Button variant="ghost" size="sm" type="button" :disabled="controlBusy" @click="void regenerateToken()">
+                    {{ t("settings.remoteHosts.controlRegenerateToken") }}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="controlStatus.pairingUrl" class="settings-remote-control-item">
+              <span class="settings-remote-control-label">{{ t("settings.remoteHosts.controlPairingUrl") }}</span>
+              <div class="settings-remote-control-row">
+                <code class="settings-remote-control-code">{{ controlStatus.pairingUrl }}</code>
+                <div class="settings-remote-control-actions">
+                  <Button variant="ghost" size="sm" type="button" @click="void copyText(controlStatus?.pairingUrl, 'controlUrlCopied')">
+                    {{ t("settings.remoteHosts.controlCopyUrl") }}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   </div>

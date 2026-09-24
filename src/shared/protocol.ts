@@ -165,6 +165,9 @@ export const IPC = {
      * crosses this channel.
      */
     remoteHostBootstrap: "dcode/remoteHost/bootstrap",
+    remoteControlGetHostStatus: "dcode/remoteControl/getHostStatus",
+    remoteControlSetHostEnabled: "dcode/remoteControl/setHostEnabled",
+    remoteControlGeneratePairingToken: "dcode/remoteControl/generatePairingToken",
     providersList: "dcode/providers/list",
     providersReorder: "dcode/providers/reorder",
     providersCreate: "dcode/providers/create",
