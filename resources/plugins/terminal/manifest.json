@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "terminal",
+  "name": "终端",
+  "version": "1.0.0",
+  "description": "在右侧工作面板中运行终端，支持命令交互、实时输出与快捷执行。",
+  "i18n": {
+    "en": {
+      "name": "Terminal",
+      "description": "Interactive terminal emulator and shell runner inside the work panel."
+    },
+    "zh-CN": {
+      "name": "终端",
+      "description": "在右侧工作面板中运行终端，支持命令交互、实时输出与快捷执行。"
+    }
+  },
+  "author": "dcode",
+  "main": "main.js",
+  "contributes": {
+    "views": [
+      {
+        "id": "terminal",
+        "title": {
+          "en": "Terminal",
+          "zh-CN": "终端"
+        },
+        "icon": "terminal",
+        "entry": "views/index.html",
+        "order": 20
+      }
+    ]
+  },
+  "permissions": ["ui.view", "agent.tool.register"],
+  "engines": {
+    "dcode": ">=0.9.0"
+  }
+}

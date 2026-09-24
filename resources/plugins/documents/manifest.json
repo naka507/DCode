@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "documents",
+  "name": "文档",
+  "version": "1.0.0",
+  "description": "在右侧工作面板中阅读、排版与检索文档、Markdown、PDF 及数据规格。",
+  "i18n": {
+    "en": {
+      "name": "Documents",
+      "description": "Rich document reader, Markdown formatter, and PDF viewer in the work panel."
+    },
+    "zh-CN": {
+      "name": "文档",
+      "description": "在右侧工作面板中阅读、排版与检索文档、Markdown、PDF 及数据规格。"
+    }
+  },
+  "author": "dcode",
+  "main": "main.js",
+  "contributes": {
+    "views": [
+      {
+        "id": "documents",
+        "title": {
+          "en": "Documents",
+          "zh-CN": "文档"
+        },
+        "icon": "book",
+        "entry": "views/index.html",
+        "order": 30
+      }
+    ]
+  },
+  "permissions": ["ui.view", "fs.read"],
+  "fs": {
+    "read": {
+      "root": "workspace",
+      "scope": ["**"]
+    }
+  },
+  "engines": {
+    "dcode": ">=0.9.0"
+  }
+}

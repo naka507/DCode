@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="pi-plugin-chrome" content="v2" />
+    <title>Documents</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #121316;
+        --surface: #18191d;
+        --surface-hover: #22242a;
+        --fg: #e2e8f0;
+        --muted: #8492a6;
+        --faint: #475569;
+        --border: rgba(255, 255, 255, 0.08);
+        --accent: #38bdf8;
+        --accent-soft: rgba(56, 189, 248, 0.12);
+        --code-bg: #1a1c22;
+        --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      :root[data-base="light"] {
+        color-scheme: light;
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface-hover: #f1f5f9;
+        --fg: #1e293b;
+        --muted: #64748b;
+        --faint: #94a3b8;
+        --border: rgba(0, 0, 0, 0.08);
+        --accent: #0284c7;
+        --accent-soft: rgba(2, 132, 199, 0.1);
+        --code-bg: #f1f5f9;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        height: 100%;
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-sans);
+        font-size: 13px;
+        overflow: hidden;
+      }
+      body {
+        padding-top: var(--pi-plugin-titlebar-height, 0px);
+        display: flex;
+        flex-direction: column;
+      }
+      .docs-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        gap: 8px;
+      }
+      .docs-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        overflow: hidden;
+      }
+      .docs-title {
+        font-weight: 600;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .docs-badge {
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        white-space: nowrap;
+      }
+      .docs-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .docs-btn {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--fg);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: background 0.15s;
+      }
+      .docs-btn:hover {
+        background: var(--surface-hover);
+      }
+      .docs-btn.is-active {
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      .docs-layout {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+      }
+      .docs-sidebar {
+        width: 220px;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .docs-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+      }
+      .docs-tab {
+        flex: 1;
+        padding: 6px;
+        text-align: center;
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 12px;
+        border-bottom: 2px solid transparent;
+      }
+      .docs-tab.is-active {
+        color: var(--accent);
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+      .docs-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 6px;
+      }
+      .docs-item {
+        padding: 5px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        color: var(--muted);
+        display: block;
+        text-decoration: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .docs-item:hover, .docs-item.is-selected {
+        background: var(--surface-hover);
+        color: var(--fg);
+      }
+      .docs-item.is-selected {
+        color: var(--accent);
+        font-weight: 500;
+      }
+      .docs-toc-item {
+        padding: 4px 8px;
+        font-size: 12px;
+        color: var(--muted);
+        cursor: pointer;
+        border-radius: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .docs-toc-item:hover {
+        color: var(--fg);
+        background: var(--surface-hover);
+      }
+      .docs-toc-level-1 { padding-left: 8px; font-weight: 600; }
+      .docs-toc-level-2 { padding-left: 18px; }
+      .docs-toc-level-3 { padding-left: 28px; font-size: 11px; }
+      .docs-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px 32px;
+        line-height: 1.6;
+      }
+      .docs-render {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .docs-render h1 { font-size: 24px; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-block-start: 0; }
+      .docs-render h2 { font-size: 18px; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-top: 24px; }
+      .docs-render h3 { font-size: 15px; margin-top: 18px; }
+      .docs-render p { margin: 12px 0; }
+      .docs-render code {
+        background: var(--code-bg);
+        padding: 2px 5px;
+        border-radius: 4px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+      }
+      .docs-render pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        padding: 12px;
+        border-radius: 6px;
+        overflow-x: auto;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .docs-render pre code { background: transparent; padding: 0; }
+      .docs-render table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 16px 0;
+      }
+      .docs-render th, .docs-render td {
+        border: 1px solid var(--border);
+        padding: 8px 12px;
+        text-align: left;
+      }
+      .docs-render th {
+        background: var(--surface);
+      }
+      .docs-render blockquote {
+        margin: 12px 0;
+        padding: 4px 16px;
+        border-left: 4px solid var(--accent);
+        color: var(--muted);
+      }
+      .docs-raw {
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        border: 0;
+        color: var(--fg);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        resize: none;
+        outline: none;
+        white-space: pre;
+      }
+      .docs-pdf-view {
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="docs-header">
+      <div class="docs-meta">
+        <button id="btn-toggle-sidebar" class="docs-btn" title="Toggle Sidebar">☰</button>
+        <span id="doc-title" class="docs-title">README.md</span>
+        <span id="doc-stats" class="docs-badge">...</span>
+      </div>
+      <div class="docs-actions">
+        <button id="btn-zoom-out" class="docs-btn" title="Decrease font size">A-</button>
+        <button id="btn-zoom-in" class="docs-btn" title="Increase font size">A+</button>
+        <button id="btn-mode-prev" class="docs-btn is-active">Preview</button>
+        <button id="btn-mode-raw" class="docs-btn">Raw</button>
+      </div>
+    </div>
+
+    <div class="docs-layout">
+      <div id="docs-sidebar" class="docs-sidebar">
+        <div class="docs-tabs">
+          <div id="tab-toc" class="docs-tab is-active">Outline</div>
+          <div id="tab-files" class="docs-tab">Workspace Files</div>
+        </div>
+        <div id="view-toc" class="docs-list"></div>
+        <div id="view-files" class="docs-list" style="display: none;"></div>
+      </div>
+
+      <div id="docs-content" class="docs-content">
+        <div id="render-target" class="docs-render"></div>
+        <textarea id="raw-target" class="docs-raw" readonly style="display: none;"></textarea>
+        <iframe id="pdf-target" class="docs-pdf-view" style="display: none;"></iframe>
+      </div>
+    </div>
+
+    <script>
+      (function() {
+        const docTitle = document.getElementById("doc-title");
+        const docStats = document.getElementById("doc-stats");
+        const renderTarget = document.getElementById("render-target");
+        const rawTarget = document.getElementById("raw-target");
+        const pdfTarget = document.getElementById("pdf-target");
+        const viewToc = document.getElementById("view-toc");
+        const viewFiles = document.getElementById("view-files");
+        const tabToc = document.getElementById("tab-toc");
+        const tabFiles = document.getElementById("tab-files");
+        const btnToggleSidebar = document.getElementById("btn-toggle-sidebar");
+        const sidebar = document.getElementById("docs-sidebar");
+        const btnModePrev = document.getElementById("btn-mode-prev");
+        const btnModeRaw = document.getElementById("btn-mode-raw");
+        const btnZoomIn = document.getElementById("btn-zoom-in");
+        const btnZoomOut = document.getElementById("btn-zoom-out");
+        const contentEl = document.getElementById("docs-content");
+
+        let fontSize = 13;
+        let isRaw = false;
+        let currentDoc = null;
+
+        async function invoke(channel, payload) {
+          if (window.pluginBridge && window.pluginBridge.invoke) {
+            return window.pluginBridge.invoke(channel, payload);
+          }
+          return { ok: false, error: "pluginBridge not found" };
+        }
+
+        async function loadDoc(docPath) {
+          const res = await invoke("docs.read", { path: docPath });
+          if (!res || !res.ok) {
+            renderTarget.innerHTML = `<p style="color: var(--muted);">${res?.error || "Failed to load document"}</p>`;
+            return;
+          }
+
+          currentDoc = res;
+          docTitle.textContent = res.name;
+
+          if (res.isPdf) {
+            renderTarget.style.display = "none";
+            rawTarget.style.display = "none";
+            pdfTarget.style.display = "block";
+            pdfTarget.src = res.dataUrl;
+            docStats.textContent = `${Math.round(res.size / 1024)} KB · PDF`;
+            viewToc.innerHTML = "<div style='color: var(--muted); padding: 8px;'>PDF outline not available</div>";
+            return;
+          }
+
+          pdfTarget.style.display = "none";
+          updateMode();
+
+          rawTarget.value = res.content || "";
+          renderMarkdown(res.content || "");
+
+          if (res.stats) {
+            docStats.textContent = `${res.stats.words} words · ${res.stats.lines} lines · ~${res.stats.readTimeMin} min read`;
+          }
+
+          renderToc(res.headings || []);
+        }
+
+        function renderToc(headings) {
+          viewToc.innerHTML = "";
+          if (!headings.length) {
+            viewToc.innerHTML = "<div style='color: var(--muted); padding: 8px;'>No outline headings</div>";
+            return;
+          }
+
+          headings.forEach(h => {
+            const div = document.createElement("div");
+            div.className = `docs-toc-item docs-toc-level-${Math.min(h.level, 3)}`;
+            div.textContent = h.text;
+            div.addEventListener("click", () => {
+              const el = document.getElementById(`heading-${h.line}`);
+              if (el) el.scrollIntoView({ behavior: "smooth" });
+            });
+            viewToc.appendChild(div);
+          });
+        }
+
+        async function loadFiles() {
+          const res = await invoke("docs.list");
+          if (!res || !res.ok || !res.docs) return;
+
+          viewFiles.innerHTML = "";
+          res.docs.forEach(d => {
+            const item = document.createElement("div");
+            item.className = "docs-item";
+            item.textContent = d.name;
+            item.title = d.path;
+            item.addEventListener("click", () => {
+              loadDoc(d.path);
+            });
+            viewFiles.appendChild(item);
+          });
+        }
+
+        function escapeHtml(str) {
+          return str.replace(/[&<>'"]/g, tag => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+          }[tag] || tag));
+        }
+
+        function renderMarkdown(md) {
+          const lines = md.split(/\r?\n/);
+          let html = "";
+          let inCode = false;
+          let codeLang = "";
+          let codeBuf = [];
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            if (line.startsWith("```")) {
+              if (inCode) {
+                html += `<pre><code>${escapeHtml(codeBuf.join("\n"))}</code></pre>`;
+                codeBuf = [];
+                inCode = false;
+              } else {
+                inCode = true;
+                codeLang = line.slice(3).trim();
+              }
+              continue;
+            }
+
+            if (inCode) {
+              codeBuf.push(line);
+              continue;
+            }
+
+            const hMatch = line.match(/^(#{1,6})\s+(.+)$/);
+            if (hMatch) {
+              const level = hMatch[1].length;
+              html += `<h${level} id="heading-${i + 1}">${escapeHtml(hMatch[2])}</h${level}>`;
+              continue;
+            }
+
+            if (line.startsWith("> ")) {
+              html += `<blockquote>${escapeHtml(line.slice(2))}</blockquote>`;
+              continue;
+            }
+
+            if (line.startsWith("- ") || line.startsWith("* ")) {
+              html += `<li>${escapeHtml(line.slice(2))}</li>`;
+              continue;
+            }
+
+            if (line.trim() === "") {
+              continue;
+            }
+
+            html += `<p>${escapeHtml(line)}</p>`;
+          }
+
+          if (inCode) {
+            html += `<pre><code>${escapeHtml(codeBuf.join("\n"))}</code></pre>`;
+          }
+
+          renderTarget.innerHTML = html;
+        }
+
+        function updateMode() {
+          if (isRaw) {
+            btnModeRaw.classList.add("is-active");
+            btnModePrev.classList.remove("is-active");
+            renderTarget.style.display = "none";
+            rawTarget.style.display = "block";
+          } else {
+            btnModePrev.classList.add("is-active");
+            btnModeRaw.classList.remove("is-active");
+            renderTarget.style.display = "block";
+            rawTarget.style.display = "none";
+          }
+        }
+
+        btnModePrev.addEventListener("click", () => {
+          isRaw = false;
+          updateMode();
+        });
+
+        btnModeRaw.addEventListener("click", () => {
+          isRaw = true;
+          updateMode();
+        });
+
+        btnToggleSidebar.addEventListener("click", () => {
+          sidebar.style.display = sidebar.style.display === "none" ? "flex" : "none";
+        });
+
+        tabToc.addEventListener("click", () => {
+          tabToc.classList.add("is-active");
+          tabFiles.classList.remove("is-active");
+          viewToc.style.display = "block";
+          viewFiles.style.display = "none";
+        });
+
+        tabFiles.addEventListener("click", () => {
+          tabFiles.classList.add("is-active");
+          tabToc.classList.remove("is-active");
+          viewToc.style.display = "none";
+          viewFiles.style.display = "block";
+          loadFiles();
+        });
+
+        btnZoomIn.addEventListener("click", () => {
+          if (fontSize < 20) {
+            fontSize += 1;
+            contentEl.style.fontSize = `${fontSize}px`;
+          }
+        });
+
+        btnZoomOut.addEventListener("click", () => {
+          if (fontSize > 11) {
+            fontSize -= 1;
+            contentEl.style.fontSize = `${fontSize}px`;
+          }
+        });
+
+        if (window.pluginBridge && window.pluginBridge.on) {
+          window.pluginBridge.on("view:open", (event) => {
+            if (event && event.path) loadDoc(event.path);
+          });
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const openPath = urlParams.get("piViewOpen");
+        loadDoc(openPath || "");
+      })();
+    </script>
+  </body>
+</html>

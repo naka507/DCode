@@ -129,6 +129,33 @@ export function fileManagerPluginTab(location: string): WorkPanelTab {
   };
 }
 
+export const TERMINAL_PLUGIN_TAB = {
+  pluginId: "terminal",
+  viewId: "terminal",
+} as const;
+
+export function terminalPluginTab(): WorkPanelTab {
+  return pluginWorkPanelTab(
+    TERMINAL_PLUGIN_TAB.pluginId,
+    TERMINAL_PLUGIN_TAB.viewId,
+  );
+}
+
+export const DOCUMENTS_PLUGIN_TAB = {
+  pluginId: "documents",
+  viewId: "documents",
+} as const;
+
+export function documentsPluginTab(location?: string): WorkPanelTab {
+  return {
+    ...pluginWorkPanelTab(
+      DOCUMENTS_PLUGIN_TAB.pluginId,
+      DOCUMENTS_PLUGIN_TAB.viewId,
+    ),
+    ...(location ? { location } : {}),
+  };
+}
+
 /** The identity of one plugin-contributed view, as tabs and manifests key it. */
 export type PluginViewRef = { pluginId: string; viewId: string };
 

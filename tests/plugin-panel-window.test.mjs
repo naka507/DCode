@@ -39,6 +39,8 @@ const shippedPanelSources = await Promise.all(
   [
     "../resources/plugins/files/views/index.html",
     "../resources/plugins/browser/views/browser.html",
+    "../resources/plugins/terminal/views/index.html",
+    "../resources/plugins/documents/views/index.html",
   ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
 );
 
@@ -167,7 +169,7 @@ test("paint-through panels let page content draw and receive pointer events", ()
 });
 
 test("dcode's shipped plugin panels follow the host chrome contract", () => {
-  assert.equal(shippedPanelSources.length, 2);
+  assert.equal(shippedPanelSources.length, 4);
   for (const panelSource of shippedPanelSources) {
     // The marker is what selects the `safe-area` chrome mode, so a panel that
     // lost it would silently fall back to the legacy 46px offset.
