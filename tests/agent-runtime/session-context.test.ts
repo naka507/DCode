@@ -162,4 +162,40 @@ describe("buildSessionContext", () => {
     expect(JSON.stringify(messages)).not.toContain("prior DeepSeek plan");
   });
 
+  it("silently compacts older tool results beyond keepRecent window", () => {
+    function toolResultEntry(id: string, text: string, seq: number): MessageEntry {
+      return {
+        type: "message",
+        id,
+        parentId: null,
+        seq,
+        timestamp: seq,
+        message: {
+          role: "toolResult",
+          toolCallId: `call-${id}`,
+          toolName: "ReadFile",
+          content: [{ type: "text", text }],
+          isError: false,
+          timestamp: seq,
+        } as AgentMessage,
+      };
+    }
+
+    const entries: MessageEntry[] = [
+      user("u1", "read files", 0),
+      toolResultEntry("t1", "old-huge-content-1-".repeat(20), 1),
+      toolResultEntry("t2", "old-huge-content-2-".repeat(20), 2),
+      toolResultEntry("t3", "recent-content-3-".repeat(20), 3),
+      toolResultEntry("t4", "recent-content-4-".repeat(20), 4),
+    ];
+
+    const messages = buildSessionContext(entries, undefined, { keepRecent: 2 }).messages;
+    expect(messages).toHaveLength(5);
+    // t1 and t2 should be cleared
+    expect((messages[1] as any).content[0].text).toBe("[Old tool result content cleared]");
+    expect((messages[2] as any).content[0].text).toBe("[Old tool result content cleared]");
+    // t3 and t4 should be preserved
+    expect((messages[3] as any).content[0].text).toContain("recent-content-3");
+    expect((messages[4] as any).content[0].text).toContain("recent-content-4");
+  });
 });

@@ -6861,6 +6861,12 @@ Delegation rules:
             );
           }
           const usage = usageFromPi((event.message as any).usage as Usage | undefined);
+          const systemPromptText =
+            this.agent?.state?.systemPrompt ?? this.composedSystemPrompt ?? "";
+          const systemPromptTokens =
+            systemPromptText.length > 0
+              ? Math.ceil(systemPromptText.length / 3)
+              : undefined;
           const hostedSearch = hostedSearchFromMessage({
             content: (event.message as any).content,
             citations: (event.message as any).hostedSearchCitations,
@@ -6931,6 +6937,7 @@ Delegation rules:
               modelId: this.provider.modelId,
               providerId: this.provider.id,
               ...(usage ? { usage } : {}),
+              ...(systemPromptTokens !== undefined ? { systemPromptTokens } : {}),
             };
             this.emit({ type: "message_update", message: this.currentAssistant });
             this.streamStartedAt = undefined;
@@ -6978,6 +6985,7 @@ Delegation rules:
               modelId: this.provider.modelId,
               providerId: this.provider.id,
               ...(usage ? { usage } : {}),
+              ...(systemPromptTokens !== undefined ? { systemPromptTokens } : {}),
             };
             this.emit({ type: "message_update", message: this.currentAssistant });
             this.streamStartedAt = undefined;
@@ -7008,6 +7016,7 @@ Delegation rules:
               modelId: this.provider.modelId,
               providerId: this.provider.id,
               ...(usage ? { usage } : {}),
+              ...(systemPromptTokens !== undefined ? { systemPromptTokens } : {}),
             };
             this.emit({ type: "message_update", message: this.currentAssistant });
             this.streamStartedAt = undefined;
@@ -7040,6 +7049,7 @@ Delegation rules:
             modelId: this.provider.modelId,
             providerId: this.provider.id,
             ...(usage ? { usage } : {}),
+            ...(systemPromptTokens !== undefined ? { systemPromptTokens } : {}),
             ...(responseDurationMs !== undefined ? { responseDurationMs } : {}),
             ...(responseOutputTokens !== undefined
               ? { responseOutputTokens }

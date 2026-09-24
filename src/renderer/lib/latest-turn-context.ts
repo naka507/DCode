@@ -24,6 +24,7 @@ export type LatestTurnContextInspector = {
   responseDurationMs?: number;
   responseOutputTokens?: number;
   responseOutputEstimated: boolean;
+  systemPromptTokens?: number;
 };
 
 /**
@@ -75,5 +76,8 @@ export function latestTurnContextInspector(
     responseOutputEstimated: latestTurn
       ? assistantTurnResponseOutputIsEstimated(latestTurn)
       : false,
+    systemPromptTokens:
+      latestUsageMessage?.systemPromptTokens ??
+      (latestTurn ? 350 : undefined),
   };
 }

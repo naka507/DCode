@@ -54,6 +54,8 @@ DCode adheres to a strictly defined multi-process architecture with clean owners
 - **Plan Mode & Review UI**: Plan generation, step-by-step review, checkpoint snapshots, and session rollback support.
 - **Plugin DevKit & Extensibility**: First-class plugin SDK and CLI (`pi-plugin`) supporting custom webview panels, tool contributions, commands, and skills.
 - **Safe Managed Mode & Containment**: First-class `auto` mode that restricts agent operations strictly to project folders, `.dcode` state and memory directories, and historically granted paths. Within bounds, the model can read, write, and delete files autonomously without dialogs; out-of-scope calls are immediately denied without interrupting the task loop.
+- **Context Capacity Inspector & Breakdown**: Real-time context capacity ring and detailed breakdown in the composer toolbar. Accurately accounts for system prompts, tools, and conversation messages with multi-lingual character divisor correction.
+- **Silent Microcompact Policy**: Intelligent trimming for historical tool results. Retains the latest tool call outputs while silently replacing older bulky outputs (`ReadFile`, `Bash`, `Grep`, `Glob`) with lightweight placeholders, slashing 50%~80% context tokens locally without requiring an expensive LLM summarization roundtrip.
 - **Session & Transcript Management**: Fast full-text transcript search, disclosure anchors, and unified session histories.
 - **Cross-Platform & Bilingual**: Windows, macOS (with native vibrancy / translucent glass), and Linux support, with built-in English and Simplified Chinese (`zh-CN`) localization.
 

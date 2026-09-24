@@ -74,11 +74,13 @@ const props = withDefaults(
     responseDurationMs?: number;
     responseOutputTokens?: number;
     responseOutputEstimated?: boolean;
+    systemPromptTokens?: number;
   }>(),
   {
     responseDurationMs: undefined,
     responseOutputTokens: undefined,
     responseOutputEstimated: false,
+    systemPromptTokens: undefined,
   },
 );
 
@@ -90,6 +92,7 @@ const breakdown = computed(() =>
   calculateContextBreakdown({
     usage: props.usage,
     tools: props.tools,
+    systemPromptTokens: props.systemPromptTokens,
   }),
 );
 

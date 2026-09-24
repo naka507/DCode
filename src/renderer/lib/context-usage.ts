@@ -187,10 +187,12 @@ function serializedLength(value: unknown): number {
   }
 }
 
+export const ESTIMATED_TOKEN_CHAR_DIVISOR = 3;
+
 /**
  * Estimate the context footprint of a historical tool row when it predates
- * runtime-provided usage metadata. The runtime uses the same four characters
- * per token heuristic for its durable estimate.
+ * runtime-provided usage metadata. Optimized for code and multi-lingual text
+ * at 3 characters per token.
  */
 export function estimateToolTokenUsage(
   message: Pick<UiMessage, "toolName" | "toolArgs" | "toolResult" | "content">,
@@ -202,8 +204,8 @@ export function estimateToolTokenUsage(
   const resultChars = serializedLength(
     message.toolResult ?? message.content ?? "",
   );
-  const argumentTokens = Math.ceil(argumentChars / 4);
-  const resultTokens = Math.ceil(resultChars / 4);
+  const argumentTokens = Math.ceil(argumentChars / ESTIMATED_TOKEN_CHAR_DIVISOR);
+  const resultTokens = Math.ceil(resultChars / ESTIMATED_TOKEN_CHAR_DIVISOR);
 
   return {
     argumentTokens,

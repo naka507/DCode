@@ -84,6 +84,8 @@ export type UiMessage = {
   providerId?: string;
   /** Token usage for the assistant turn, when the provider reported it. */
   usage?: MessageUsage;
+  /** Estimated system prompt token count for this turn's context snapshot. */
+  systemPromptTokens?: number;
   /** Elapsed model streaming time used to calculate output throughput. */
   responseDurationMs?: number;
   /** Output tokens used only for throughput when a stopped stream has no final usage. */
