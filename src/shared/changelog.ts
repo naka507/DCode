@@ -25,6 +25,16 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "1.0.3",
+    date: "2026-09-24",
+    highlights: [
+      "Plan mode closed-loop execution & status capsule: top-right floating execution capsule in transcript with live phase/step progress and activity indicators.",
+      "Interactive plan detail popover: click the status capsule to view complete phase checklists, progress percentage, view artifact, and copy execution reports without expanding the wide work panel.",
+      "Safe managed mode: autonomous file operations (read, write, delete) within authorized workspace & memory scopes, with non-interrupting fail-fast rejection for out-of-scope paths.",
+      "Enhanced context window & capacity inspector: real-time token tracking, segmented breakdown of reasoning/tools/system prompts, and local silent microcompaction.",
+    ],
+  },
+  {
     version: "1.0.2",
     date: "2026-09-24",
     highlights: [
@@ -65,6 +75,16 @@ const enEntries: ChangelogEntry[] = [
 ];
 
 const zhCNEntries: ChangelogEntry[] = [
+  {
+    version: "1.0.3",
+    date: "2026-09-24",
+    highlights: [
+      "计划模式全闭环与状态胶囊：会话右上角浮动状态胶囊，实时展示当前执行阶段、步骤名称及运行脉冲动画。",
+      "轻量计划详情气泡卡片：点击胶囊展开轻量悬浮面板查看完整步骤清单与进度，支持一键定位文档与复制报告，不挤占工作区。",
+      "安全托管模式与作用域防护：在项目工作区与记忆目录内享有自主读写与删除权限，越界路径底层静默拒绝且不打断上层任务。",
+      "上下文容量洞察与显式用量统计：实时统计会话 Token 占用，细分思考推理、工具与系统提示词比例，配合微型压缩延缓上下文溢出。",
+    ],
+  },
   {
     version: "1.0.2",
     date: "2026-09-24",

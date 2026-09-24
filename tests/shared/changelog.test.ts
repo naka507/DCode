@@ -26,9 +26,9 @@ describe("changelog catalog", () => {
 
   it("lists only shipped stable releases, newest-first, without pre-releases", () => {
     const versions = CHANGELOG.en.map((e) => e.version);
-    expect(versions[0]).toBe("1.0.2");
+    expect(versions[0]).toBe("1.0.3");
     expect(versions.at(-1)).toBe(OLDEST);
-    expect(versions).toEqual(["1.0.2", "1.0.1", "1.0.0"]);
+    expect(versions).toEqual(["1.0.3", "1.0.2", "1.0.1", "1.0.0"]);
     for (const version of versions) {
       expect(version).not.toMatch(/-/);
     }

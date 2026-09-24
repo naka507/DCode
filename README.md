@@ -13,7 +13,7 @@
 
 ## Status
 
-- **Current release line:** `1.0.x` (Active stable release: `1.0.1`)
+- **Current release line:** `1.0.x` (Active stable release: `1.0.3`)
 - **License:** Apache License 2.0
 
 ---
@@ -51,7 +51,7 @@ DCode adheres to a strictly defined multi-process architecture with clean owners
 - **Multi-Agent Orchestration & Subagents**: Dispatch subtasks concurrently or sequentially, stream subagent execution results in real time, and supervise task progression.
 - **Rich Native & System Tools**: Built-in terminal command execution (PowerShell / Bash), precision file editing via `hashline`, structured file management, and browser automation via `pi.browser`.
 - **Multi-Provider Model Hub**: Seamless integration with Anthropic Claude, OpenAI, DeepSeek, Ollama, and arbitrary OpenAI-compatible gateways, enriched automatically with the `models.dev` catalog.
-- **Plan Mode & Review UI**: Plan generation, step-by-step review, checkpoint snapshots, and session rollback support.
+- **Plan Mode Closed-Loop & Capsule Popover**: Renders a floating plan status capsule in the top-right of the transcript during plan execution with phase names and pulse animations; clicking expands an inline detail popover showing checklist items, progress bars, artifact document links, and report copying without disturbing the main workspace.
 - **Plugin DevKit & Extensibility**: First-class plugin SDK and CLI (`pi-plugin`) supporting custom webview panels, tool contributions, commands, and skills.
 - **Safe Managed Mode & Containment**: First-class `auto` mode that restricts agent operations strictly to project folders, `.dcode` state and memory directories, and historically granted paths. Within bounds, the model can read, write, and delete files autonomously without dialogs; out-of-scope calls are immediately denied without interrupting the task loop.
 - **Context Capacity & Reasoning Inspector**: Real-time context capacity ring and multi-segment breakdown in the composer toolbar. Accurately extracts reasoning/thought tokens (e.g. DeepSeek R1, Claude 3.7 Sonnet, OpenAI o-series) from standard conversation text, displaying system prompts, tools, reasoning, and messages with precision token calculations and cache hit rates.
@@ -159,6 +159,32 @@ Within the authorized scope, the LLM has complete operational freedom:
   - **No approval card is displayed and task execution is never suspended or interrupted**.
   - The refusal is provided directly as a standard tool error result to the model.
   - The model recognizes the boundary error and autonomously adapts within the workspace, ensuring smooth and safe automated workflows.
+
+---
+
+## Plan Mode Closed-Loop & Interactive Capsule
+
+DCode provides an end-to-end plan and goal execution closed-loop, featuring an intuitive floating capsule and detail popover for frictionless task observability:
+
+### 1. Floating Plan Status Capsule
+- Renders as a floating capsule in the top-right corner of the chat transcript whenever a plan/goal proposal is executing or completed.
+- Displays the task title, a clean divider, and the active execution phase/step text in real time (e.g. `Phase 1: Dependency Probe`, `3/7 steps completed`).
+- Includes a live pulsing indicator during execution and a clean checkmark upon completion, with single-click dismissal.
+
+### 2. Lightweight Detail Popover
+- **Non-intrusive presentation**: Clicking the capsule toggles an inline dropdown popover anchored beneath the capsule, **without opening or disturbing the wide right WorkPanel**.
+- **Phase & Step Transparency**: Displays the overall progress percentage bar, individual phase badges, and active checklist step items (completed, in-progress, pending).
+- **One-Click Actions**: Easily jump to the plan artifact markdown document or copy a formatted progress summary directly to the clipboard.
+
+---
+
+## Context Capacity Monitoring & Explicit Usage Metrics
+
+To prevent unexpected context overflow and provide full transparency into LLM token consumption, DCode incorporates a comprehensive context management pipeline:
+
+- **Real-Time Capacity Ring**: Embedded directly in the composer toolbar, visualizing active token usage against the model's maximum context limit.
+- **Segmented Breakdown**: Distinguishes system prompts, declared tools, reasoning/thought traces, and conversation message history with precision token counts and cache hit awareness.
+- **Silent Microcompaction**: Automatically prunes past bulky tool outputs (file reads, shell outputs) with lightweight placeholders, saving 50%~80% tokens locally with zero API latency.
 
 ---
 
