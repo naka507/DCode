@@ -13,7 +13,7 @@
 
 ## Status
 
-- **Current release line:** `1.0.x` (Active stable release: `1.0.3`)
+- **Current release line:** `1.0.x` (Active stable release: `1.0.4`)
 - **License:** Apache License 2.0
 
 ---
@@ -49,7 +49,13 @@ DCode adheres to a strictly defined multi-process architecture with clean owners
 ## Key Features
 
 - **Multi-Agent Orchestration & Subagents**: Dispatch subtasks concurrently or sequentially, stream subagent execution results in real time, and supervise task progression.
-- **Rich Native & System Tools**: Built-in terminal command execution (PowerShell / Bash), precision file editing via `hashline`, structured file management, and browser automation via `pi.browser`.
+- **Built-in Work Panel Plugins**: Clean, standardized single-word plugin architecture (`browser`, `files`, `terminal`, `documents`):
+  - **`terminal`**: Interactive shell runner with host platform auto-detection (PowerShell/CMD on Windows, Bash/Zsh on macOS/Linux), quick action pills, command history navigation, and direct agent tool execution.
+  - **`documents`**: Rich document reader featuring Markdown reading metrics, interactive hierarchical Table of Contents (TOC) with anchor navigation, preview/raw Markdown toggle, and embedded PDF document viewer.
+  - **`browser`**: Headless or interactive web browsing with screenshot and DOM automation.
+  - **`files`**: Tree-based file and directory manager with inline preview.
+- **Curated MCP Preset Catalog & Cross-Platform Sync**: 9 curated open-source MCP presets (Context7, GitHub, Memory, Fetch, SQLite, Postgres, Filesystem, Puppeteer, Docker) with UI quick-fill chips in the MCP editor. Transparently translates file paths, command names (`npx.cmd` to `npx`), and environment variables during SSH remote host synchronization.
+- **Zero-Overhead Engineering Skills Catalog**: Bundled engineering skills (`dcode/react-best-practices`, `dcode/agent-browser`, `dcode/dogfood`, `dcode/electron`) loaded on-demand via the agent `Skill` tool, keeping idle token consumption and memory usage at absolute zero.
 - **Multi-Provider Model Hub**: Seamless integration with Anthropic Claude, OpenAI, DeepSeek, Ollama, and arbitrary OpenAI-compatible gateways, enriched automatically with the `models.dev` catalog.
 - **Plan Mode Closed-Loop & Capsule Popover**: Renders a floating plan status capsule in the top-right of the transcript during plan execution with phase names and pulse animations; clicking expands an inline detail popover showing checklist items, progress bars, artifact document links, and report copying without disturbing the main workspace.
 - **Plugin DevKit & Extensibility**: First-class plugin SDK and CLI (`pi-plugin`) supporting custom webview panels, tool contributions, commands, and skills.

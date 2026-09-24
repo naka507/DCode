@@ -1,7 +1,15 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseSkillFrontmatter } from "@dcode/plugin-sdk";
 import type { PluginSkillDef } from "@dcode/agent-runtime";
+
+const currentDir =
+  typeof __dirname !== "undefined"
+    ? __dirname
+    : typeof import.meta?.url === "string"
+      ? dirname(fileURLToPath(import.meta.url))
+      : process.cwd();
 
 /**
  * Skills dcode ships itself.
@@ -20,8 +28,9 @@ export const PLUGIN_DEV_SKILL_ID = "dcode/plugin-development";
 function resolveBuiltinSkillPath(fileName: string): string | null {
   const candidates = [
     join(process.resourcesPath || "", "skills", fileName),
-    join(__dirname, "../../resources/skills", fileName),
-    join(__dirname, "../../../resources/skills", fileName),
+    join(currentDir, "../../resources/skills", fileName),
+    join(currentDir, "../../../resources/skills", fileName),
+    join(process.cwd(), "resources/skills", fileName),
   ];
   for (const candidate of candidates) {
     if (candidate && existsSync(candidate)) return candidate;

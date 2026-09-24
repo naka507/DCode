@@ -13,7 +13,7 @@
 
 ## 项目状态 (Status)
 
-- **当前版本线 (Release Line):** `1.0.x` (当前稳定版本: `1.0.3`)
+- **当前版本线 (Release Line):** `1.0.x` (当前稳定版本: `1.0.4`)
 - **开源协议 (License):** Apache License 2.0 (Apache-2.0)
 
 ---
@@ -49,8 +49,14 @@ DCode 采用清晰的分层多进程架构，具备严格的权责边界与安�
 ## 主要特性
 
 - 🤖 **多智能体协作与子任务编排 (Subagents)**：支持并行或串行分发子任务，子智能体执行过程与工具调用支持实时增量流式渲染，具备完整的任务监督与状态流转机制。
-- 🛠️ **原生级开发工具箱**：内置终端命令执行环境（PowerShell / Bash）、基于精确哈希定位的代码编辑替换（Hashline Patch）、树形文件管理系统以及基于浏览器自动化的 `pi.browser`。
-- 🧠 **全模型生态集成**：原生兼容 Anthropic Claude、OpenAI、DeepSeek、Ollama 及各类自定义 OpenAI 兼容接口，深度打通 `models.dev` 模型元数据目录并实现自动参数补全。
+- 🖥️ **工作面板原生扩展插件体系**：采用简洁单单词命名的内置面板生态（`browser`、`files`、`terminal`、`documents`）：
+  - **`terminal` 终端面板**：集成交互式 Shell 终端，跨平台自动探测平台默认 Shell（Windows 优先使用 PowerShell/CMD，macOS/Linux 优先使用 Bash/Zsh），提供快捷指令卡片、历史命令上下键回溯及智能体工具直连执行能力。
+  - **`documents` 文档面板**：集成丰富文档阅读与大纲导航面板，支持 Markdown 阅读时长与字数统计、分级大纲目录锚点跳转、源码与预览切换，并原生支持 PDF 渲染浏览。
+  - **`browser` 浏览器面板**：提供网页自动化、界面截屏与 DOM 元素交互。
+  - **`files` 文件管理面板**：提供树形文件与目录浏览管理、文件状态审查。
+- 🌐 **精选 MCP 预设中心与跨平台远端透明同步**：内置 Context7、GitHub、Memory、Fetch、SQLite、Postgres、Filesystem、Puppeteer、Docker 等 9 大常用开源 MCP 服务，支持编辑器内一键快捷填充预设；在同步至 SSH 远端主机时，全自动智能转换可执行命令（如 `npx.cmd` 转为 `npx`）与跨平台路径映射，免除繁琐的手动适配。
+- 🧠 **核心工程技能包按需加载 (Zero-Overhead Skills Catalog)**：内置 `dcode/react-best-practices`、`dcode/agent-browser`、`dcode/dogfood` 与 `dcode/electron` 核心工程技能规范，通过智能体 `Skill` 工具按需动态挂载激活，平时闲置时零内存占用与零 Token 消耗。
+- 🧩 **全模型生态集成**：原生兼容 Anthropic Claude、OpenAI、DeepSeek、Ollama 及各类自定义 OpenAI 兼容接口，深度打通 `models.dev` 模型元数据目录并实现自动参数补全。
 - 📝 **规划模式全闭环与交互胶囊 (Plan Mode Closed-Loop & Capsule Popover)**：在计划生成与分步执行过程中，主会话右上角以极简状态胶囊实时呈现任务名、执行阶段与脉冲动画；点击直接弹出轻量半透明详情气泡面板，展示多阶段任务清单、步骤打勾状态、总体百分比进度条，并提供一键定位计划产物（Artifact）及复制执行摘要功能，不侵占或打扰右侧大工作区。
 - 🔌 **插件扩展体系 (Plugin SDK & DevKit)**：提供完善的插件 SDK 与脚手架命令行工具（`pi-plugin`），支持自定义 Webview 侧边面板、智能体工具扩展（Agent Tools）、命令注册与自定义技能包（Skills）。
 - 🛡️ **安全托管与权限沙箱 (Safe Managed Mode)**：内置安全托管模式（`auto`）。大模型在当前项目配置的工作区目录、`.dcode` 记忆与配置目录、以及历史已授权路径内享有完全操作权限（自由创建、修改及删除），无需弹窗打扰；越界外部路径由特权宿主底层直接静默阻断（Fail-Fast），将拒信反馈给模型且绝不打断任务执行流。
