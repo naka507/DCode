@@ -1738,6 +1738,8 @@ export const zhCN = {
       sheetSubtitle: "智能体先读说明，只有觉得相关时才会打开正文。",
       sheetNote: "保存为 markdown 文件，也可以在应用外编辑。",
       searchPlaceholder: "搜索技能",
+      sourceBuiltin: "内置",
+      copy: "复制为我的",
       edit: "编辑",
       remove: "删除",
       reveal: "在文件夹中显示",

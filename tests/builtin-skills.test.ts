@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   builtinSkills,
   loadBuiltinSkillBody,
+  listAllBuiltinSkills,
   BUILTIN_SKILLS_MANIFEST,
 } from "../src/main/builtin-skills.js";
 
@@ -13,6 +14,22 @@ describe("builtinSkills", () => {
     expect(ids).toContain("dcode/agent-browser");
     expect(ids).toContain("dcode/dogfood");
     expect(ids).toContain("dcode/electron");
+  });
+
+  it("listAllBuiltinSkills returns all shipped skills with body and metadata", () => {
+    const all = listAllBuiltinSkills();
+    expect(all.length).toBe(5);
+    const ids = all.map((s) => s.id);
+    expect(ids).toContain("dcode/react-best-practices");
+    expect(ids).toContain("dcode/agent-browser");
+    expect(ids).toContain("dcode/dogfood");
+    expect(ids).toContain("dcode/electron");
+    expect(ids).toContain("dcode/plugin-development");
+    for (const item of all) {
+      expect(item.name).toBeTruthy();
+      expect(item.description).toBeTruthy();
+      expect(item.body.length).toBeGreaterThan(100);
+    }
   });
 
   it("returns core skills in non-plugin workspaces", () => {

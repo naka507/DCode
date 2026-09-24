@@ -1,6 +1,7 @@
 import { dialog, shell } from "electron";
 import { ErrorCodes, IPC, type ActivationScope, type AgentCapabilityMove, type AgentCapabilityQuery, type UserSkillRecord, type UserSubagentRecord } from "@dcode/shared";
 import { loadSubagentDefinitions, type UserSubagentDocument } from "@dcode/agent-runtime";
+import { listAllBuiltinSkills } from "../builtin-skills";
 import type { HostProcess } from "../host-process";
 import type { IpcRegistrar } from "./types";
 
@@ -38,6 +39,10 @@ export function registerSkillsIpc({
   handle(IPC.invoke.skillList, async (query: Partial<AgentCapabilityQuery> = {}) => {
     if (!host) throw new Error("host unavailable");
     return host.call("skills.list", query);
+  });
+
+  handle(IPC.invoke.skillBuiltinList, async () => {
+    return listAllBuiltinSkills();
   });
 
   handle(IPC.invoke.skillCreate, async (skill: Record<string, unknown>) => {

@@ -237,6 +237,7 @@ export const IPC = {
     mcpImportScan: "dcode/mcp/importScan",
     mcpImportRun: "dcode/mcp/importRun",
     skillList: "dcode/skill/list",
+    skillBuiltinList: "dcode/skill/builtinList",
     skillCreate: "dcode/skill/create",
     skillImport: "dcode/skill/import",
     skillImportScan: "dcode/skill/importScan",

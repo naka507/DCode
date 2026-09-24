@@ -165,3 +165,31 @@ export function loadBuiltinSkillBody(
     body: parsed.body,
   };
 }
+
+export type BuiltinSkillInfo = {
+  id: string;
+  name: string;
+  description: string;
+  body: string;
+  pluginWorkspaceOnly?: boolean;
+};
+
+/**
+ * List all shipped built-in skills for the settings UI.
+ */
+export function listAllBuiltinSkills(): BuiltinSkillInfo[] {
+  const out: BuiltinSkillInfo[] = [];
+  for (const item of BUILTIN_SKILLS_MANIFEST) {
+    const raw = readBuiltinSkill(item.file);
+    if (!raw?.trim()) continue;
+    const parsed = parseSkillFrontmatter(raw);
+    out.push({
+      id: item.id,
+      name: parsed.name ?? item.id,
+      description: parsed.description ?? "",
+      body: parsed.body ?? "",
+      pluginWorkspaceOnly: item.pluginWorkspaceOnly,
+    });
+  }
+  return out;
+}

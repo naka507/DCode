@@ -941,6 +941,14 @@ export const api = {
   // --- Skills the user owns -------------------------------------------------
   listUserSkills: (query?: AgentCapabilityQuery) =>
     invoke<{ skills: UserSkillRecord[] }>(IPC.invoke.skillList, query),
+  listBuiltinSkills: () =>
+    invoke<Array<{
+      id: string;
+      name: string;
+      description: string;
+      body: string;
+      pluginWorkspaceOnly?: boolean;
+    }>>(IPC.invoke.skillBuiltinList),
   createUserSkill: (skill: UserSkillInput) =>
     invoke<{ skill: UserSkillRecord }>(IPC.invoke.skillCreate, skill),
   /**

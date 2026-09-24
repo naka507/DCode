@@ -1766,6 +1766,8 @@ importConfirm: "Imported extensions run inside the agent process with the same a
       sheetSubtitle: "The agent reads the description first, and opens the document only when it looks relevant.",
       sheetNote: "Saved as a markdown file you can edit outside the app.",
       searchPlaceholder: "Search skills",
+      sourceBuiltin: "Built-in",
+      copy: "Copy as mine",
       edit: "Edit",
       remove: "Delete",
       reveal: "Show in folder",

@@ -51,6 +51,7 @@ import { useHostCollection } from "../../hooks/use-host-collection";
 import {
   IconArrowUpDown,
   IconBookOpen,
+  IconCopy,
   IconDownload,
   IconFileText,
   IconFolderOpen,
@@ -77,7 +78,7 @@ import {
   type CapabilityMenuItem,
 } from "./AgentCapabilityLayout.vue";
 import SkillEditorSheet from "./SkillEditorSheet.vue";
-import { draftFromSkill, emptySkillDraft, type SkillDraft } from "./skill-editor";
+import { draftFromBuiltin, draftFromSkill, emptySkillDraft, type SkillDraft } from "./skill-editor";
 
 const GLOBAL_SKILLS_PATH = "~/.agents/skills";
 
@@ -92,12 +93,21 @@ type SkillEditorState = {
   level: AgentCapabilityLevel;
 };
 
+export type BuiltinSkillItem = {
+  id: string;
+  name: string;
+  description: string;
+  body: string;
+  pluginWorkspaceOnly?: boolean;
+};
+
 type SkillCollection = {
   global: UserSkillRecord[];
   project: UserSkillRecord[];
+  builtins: BuiltinSkillItem[];
 };
 
-const EMPTY_SKILL_COLLECTION: SkillCollection = { global: [], project: [] };
+const EMPTY_SKILL_COLLECTION: SkillCollection = { global: [], project: [], builtins: [] };
 
 /** One skill, flattened for the template. */
 type SkillRow = {
@@ -120,7 +130,7 @@ const { selectedProjectPath, setSelectedProjectPath, options } = useAgentProject
 const { data, setData, loading, refreshing, reload } = useHostCollection(
   async (): Promise<SkillCollection> => {
     const projectPath = selectedProjectPath.value;
-    const [global, project] = await Promise.all([
+    const [global, project, builtins] = await Promise.all([
       api.listUserSkills({
         level: "global",
         ...(projectPath ? { projectPath } : {}),
@@ -128,8 +138,13 @@ const { data, setData, loading, refreshing, reload } = useHostCollection(
       projectPath
         ? api.listUserSkills({ level: "project", projectPath })
         : Promise.resolve({ skills: [] as UserSkillRecord[] }),
+      api.listBuiltinSkills().catch(() => [] as BuiltinSkillItem[]),
     ]);
-    return { global: global.skills ?? [], project: project.skills ?? [] };
+    return {
+      global: global.skills ?? [],
+      project: project.skills ?? [],
+      builtins: builtins ?? [],
+    };
   },
   EMPTY_SKILL_COLLECTION,
   (error) => showToast(error instanceof Error ? error.message : String(error), { variant: "error" }),
@@ -326,6 +341,19 @@ async function importSkill(
   }
 }
 
+export type BuiltinSkillRow = BuiltinSkillItem & {
+  key: string;
+};
+
+const builtinRows = computed<BuiltinSkillRow[]>(() => {
+  const match = (skill: BuiltinSkillItem) =>
+    matchesCapabilitySearch(search.value, skill.name, skill.id, skill.description);
+  return (data.value.builtins ?? []).filter(match).map((item) => ({
+    key: `builtin:${item.id}`,
+    ...item,
+  }));
+});
+
 const visible = computed(() => {
   const match = (skill: UserSkillRecord) =>
     matchesCapabilitySearch(search.value, skill.name, skill.id, skill.description);
@@ -336,8 +364,8 @@ const visible = computed(() => {
 });
 
 const counts = computed(() => ({
-  all: visible.value.global.length + visible.value.project.length,
-  global: visible.value.global.length,
+  all: visible.value.global.length + visible.value.project.length + builtinRows.value.length,
+  global: visible.value.global.length + builtinRows.value.length,
   project: visible.value.project.length,
 }));
 
@@ -484,6 +512,15 @@ const projectRows = computed(() => rowsFor("project"));
 
 const showGlobal = computed(() => filter.value !== "project");
 const showProject = computed(() => filter.value !== "global");
+const showBuiltin = computed(() => filter.value !== "project");
+
+function copyBuiltin(item: BuiltinSkillItem) {
+  editor.value = {
+    draft: draftFromBuiltin(item),
+    editing: null,
+    level: targetLevel.value,
+  };
+}
 
 const newSkillTitle = computed(() =>
   targetLevel.value === "project"
@@ -561,6 +598,43 @@ function setMenuOpen(key: string, open: boolean) {
       </CapabilityEmpty>
 
       <template v-else>
+        <template v-if="showBuiltin && builtinRows.length > 0">
+          <CapabilityGroupHeader
+            :label="t('extensions.skills.sourceBuiltin')"
+            :count="builtinRows.length"
+          />
+          <CapabilityRow
+            v-for="row in builtinRows"
+            :key="row.key"
+            :name="row.name"
+            :command="row.id"
+            :description="row.description"
+          >
+            <template #glyph>
+              <IconBookOpen :size="16" />
+            </template>
+            <template #badges>
+              <span class="agent-capability-badge">
+                {{ t("extensions.skills.sourceBuiltin") }}
+              </span>
+              <span v-if="row.pluginWorkspaceOnly" class="agent-capability-badge">
+                dev
+              </span>
+            </template>
+            <template #actions>
+              <TooltipButton
+                as="button"
+                type="button"
+                class="settings-icon-button"
+                :label="t('extensions.skills.copy')"
+                @click="copyBuiltin(row)"
+              >
+                <IconCopy :size="15" />
+              </TooltipButton>
+            </template>
+          </CapabilityRow>
+        </template>
+
         <template v-if="showGlobal">
           <CapabilityGroupHeader
             :label="t('settings.globalLevel')"

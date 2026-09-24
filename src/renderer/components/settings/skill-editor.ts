@@ -67,6 +67,23 @@ export function draftFromSkill(record: UserSkillRecord, body: string): SkillDraf
   };
 }
 
+export function draftFromBuiltin(builtin: {
+  id: string;
+  name: string;
+  description?: string;
+  body?: string;
+}): SkillDraft {
+  const shortName = builtin.id.replace(/^dcode\//, "");
+  return {
+    id: `${shortName}-copy`,
+    name: `${builtin.name} (Copy)`,
+    description: builtin.description ?? "",
+    body: builtin.body ?? "",
+    enabled: true,
+    scope: GLOBAL_SCOPE,
+  };
+}
+
 /** Mirror of host-core's `slugify`, so the id shown matches the one stored. */
 export function skillSlug(value: string): string {
   let slug = "";
