@@ -53,6 +53,7 @@ DCode adheres to a strictly defined multi-process architecture with clean owners
 - **Multi-Provider Model Hub**: Seamless integration with Anthropic Claude, OpenAI, DeepSeek, Ollama, and arbitrary OpenAI-compatible gateways, enriched automatically with the `models.dev` catalog.
 - **Plan Mode & Review UI**: Plan generation, step-by-step review, checkpoint snapshots, and session rollback support.
 - **Plugin DevKit & Extensibility**: First-class plugin SDK and CLI (`pi-plugin`) supporting custom webview panels, tool contributions, commands, and skills.
+- **Safe Managed Mode & Containment**: First-class `auto` mode that restricts agent operations strictly to project folders, `.dcode` state and memory directories, and historically granted paths. Within bounds, the model can read, write, and delete files autonomously without dialogs; out-of-scope calls are immediately denied without interrupting the task loop.
 - **Session & Transcript Management**: Fast full-text transcript search, disclosure anchors, and unified session histories.
 - **Cross-Platform & Bilingual**: Windows, macOS (with native vibrancy / translucent glass), and Linux support, with built-in English and Simplified Chinese (`zh-CN`) localization.
 
@@ -131,6 +132,30 @@ Start the Electron development environment with Hot Module Replacement (HMR):
 ```bash
 npm run dev
 ```
+
+---
+
+## Safe Managed Mode & Permission Security Boundaries
+
+DCode implements an expressive, tiered permission model (`ask`, `accept-edits`, and `auto`). When operating under **Safe Managed Mode (`auto`)**, operations adhere to the following containment rules:
+
+### 1. Authorized Scope
+Tool access is strictly authorized across:
+- **Project Workspaces**: All directories configured for the project group (multi-root `ProjectGroupRoot` collections).
+- **`.dcode` State & Memory**: Global data directories (`~/.dcode`) and project-local `.dcode/` trees.
+- **Granted External Paths**: Any external directory or file explicitly approved by the user and cached in `authorized_paths`.
+- **Session Scratch**: An isolated execution sandbox directory (`scratch`) allocated per session.
+
+### 2. Autonomous In-Scope Operations
+Within the authorized scope, the LLM has complete operational freedom:
+- Reading, writing, modifying, and **deleting** files (including shell deletion commands like `rm` and `del`, with the process current working directory locked to the workspace root) execute automatically without prompting the user.
+
+### 3. Fail-Fast Out-of-Scope Containment (Non-Interrupting)
+- Whenever a tool call targets paths outside the authorized scope:
+  - The privileged native host (**DCore**) hard-rejects the request immediately (`PermissionDecision::Deny`).
+  - **No approval card is displayed and task execution is never suspended or interrupted**.
+  - The refusal is provided directly as a standard tool error result to the model.
+  - The model recognizes the boundary error and autonomously adapts within the workspace, ensuring smooth and safe automated workflows.
 
 ---
 

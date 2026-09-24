@@ -79,6 +79,7 @@ Mandatory boundaries:
 * Electron Main must remain a thin orchestrator.
 * `src/shared/` must not depend on main-process implementation code.
 * Plugin permission and sandbox boundaries must not be bypassed.
+* Safe Managed Mode (`auto`) strictly bounds tool execution to authorized project roots, the `.dcode` directory, and historically granted paths. Out-of-scope calls are immediately hard-denied (`Deny`) without prompting, allowing the agent turn to continue uninterrupted.
 
 Changing a frozen architecture, public interface, data ownership model, or
 security boundary requires a recorded decision. This repository keeps no
