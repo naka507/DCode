@@ -1,0 +1,239 @@
+{
+  "name": "dcode",
+  "description": "dcode — desktop workspace for AI coding agents (Electron shell + Vue 3 renderer)",
+  "version": "1.0.1",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "main": "./out/main/index.js",
+  "desktopName": "dcode.desktop",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/naka507/DCode.git"
+  },
+  "scripts": {
+    "dev": "node scripts/dev-electron.mjs",
+    "predev": "npm run build:sidecar",
+    "build": "electron-vite build",
+    "build:sidecar": "node scripts/bundle-sidecar.mjs",
+    "start": "electron-vite preview",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "lint": "node scripts/check-style-tokens.mjs",
+    "test": "node --experimental-transform-types --import ./tests/helpers/register-hooks.mjs --test \"tests/**/*.test.mjs\"",
+    "test:unit": "vitest run",
+    "test:all": "npm run test && npm run test:unit",
+    "postinstall": "node scripts/apply-patches.mjs && electron-builder install-app-deps",
+    "patches:check": "node scripts/apply-patches.mjs --check",
+    "pack": "npm run build:sidecar && electron-vite build && electron-builder --dir",
+    "dist": "npm run build:sidecar && electron-vite build && electron-builder --publish never",
+    "dist:win": "npm run build:sidecar && electron-vite build && electron-builder --win --publish never",
+    "dist:mac": "npm run build:sidecar && electron-vite build && electron-builder --mac --publish never",
+    "dist:linux": "npm run build:sidecar && electron-vite build && electron-builder --linux --publish never",
+    "clean": "node -e \"fs.rmSync('out',{recursive:true,force:true});fs.rmSync('release',{recursive:true,force:true});fs.rmSync('resources/runtime',{recursive:true,force:true})\"",
+    "test:e2e": "node scripts/e2e-smoke.mjs",
+    "test:e2e:rpc-unicode": "node scripts/e2e-rpc-unicode.mjs",
+    "test:e2e:plan": "node scripts/e2e-plan.mjs",
+    "test:e2e:plan-ui": "node scripts/e2e-plan-ui.mjs",
+    "test:e2e:theme-surfaces": "node scripts/e2e-theme-surfaces.mjs",
+    "test:e2e:composer-autocomplete": "node scripts/e2e-composer-autocomplete.mjs",
+    "test:e2e:composer-paste": "node scripts/e2e-composer-paste.mjs",
+    "test:e2e:transcript-disclosure": "node scripts/e2e-transcript-disclosure-anchor.mjs",
+    "test:e2e:boot": "node scripts/e2e-electron-boot.mjs",
+    "test:e2e:layout": "node scripts/e2e-three-column-layout.mjs",
+    "test:e2e:window-controls": "node scripts/e2e-window-controls.mjs",
+    "test:e2e:transcript-render": "node scripts/e2e-transcript-render.mjs",
+    "test:e2e:supervision": "node scripts/e2e-supervision.mjs",
+    "test:e2e:subagents": "node scripts/e2e-subagents.mjs",
+    "test:e2e:subagent-models": "node scripts/e2e-subagent-models.mjs",
+    "test:e2e:capability-move": "node scripts/e2e-capability-move.mjs",
+    "test:e2e:plugin-import-deps": "node scripts/e2e-plugin-import-deps.mjs",
+    "test:e2e:trusted-extensions": "node scripts/e2e-trusted-extensions.mjs",
+    "test:e2e:collaboration": "node scripts/e2e-session-collaboration.mjs",
+    "test:e2e:session-completion": "node scripts/e2e-session-completion.mjs",
+    "test:e2e:remote-host": "node scripts/e2e-remote-host.mjs",
+    "test:e2e:agent-live": "node scripts/e2e-agent-live.mjs",
+    "test:e2e:provider-api-style": "node scripts/e2e-provider-api-style.mjs",
+    "test:e2e:provider-ipc-payload": "node scripts/e2e-provider-ipc-payload.mjs",
+    "test:e2e:provider-order": "node scripts/e2e-provider-order.mjs"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "0.85.1",
+    "@earendil-works/pi-ai": "0.85.1",
+    "@earendil-works/pi-coding-agent": "0.85.1",
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "electron-updater": "^6.8.9",
+    "jiti": "2.7.0",
+    "lucide-vue-next": "^1.0.0",
+    "reka-ui": "^2.10.4",
+    "typebox": "^1.3.13",
+    "undici": "^7.16.0",
+    "ws": "8.21.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "dompurify": "^3.4.13",
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^4.0.0",
+    "katex": "^0.16.47",
+    "marked": "^18.0.9",
+    "mermaid": "^11.16.1",
+    "pinia": "^3.0.3",
+    "pinyin-pro": "3.29.1",
+    "shiki": "^4.4.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11",
+    "vue": "^3.5.34",
+    "vue-i18n": "^11.1.12",
+    "vue-tsc": "^3.1.1"
+  },
+  "build": {
+    "appId": "net.dcode.app",
+    "productName": "DCode",
+    "electronLanguages": [
+      "en-US",
+      "zh-CN"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "naka507",
+        "repo": "DCode"
+      }
+    ],
+    "files": [
+      "out/**/*",
+      "package.json",
+      "!**/*.map",
+      "!**/node_modules/*/{test,tests,__tests__,powered-test,example,examples}/**",
+      "!**/node_modules/**/*.{test,spec}.{js,cjs,mjs}",
+      "!**/node_modules/**/*.d.ts",
+      "!**/node_modules/**/*.d.mts",
+      "!**/node_modules/**/*.d.cts",
+      "!**/node_modules/**/docs/**",
+      "!**/node_modules/@esbuild/**",
+      "!**/node_modules/esbuild/**"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/runtime",
+        "to": "agent-runtime"
+      },
+      {
+        "from": "resources/skills",
+        "to": "skills"
+      },
+      {
+        "from": "resources/plugins",
+        "to": "plugins"
+      },
+      {
+        "from": "resources/models.dev",
+        "to": "models.dev"
+      },
+      {
+        "from": "build/icon.png",
+        "to": "tray-icon.png"
+      }
+    ],
+    "win": {
+      "artifactName": "DCode-Setup-${version}.${ext}",
+      "executableName": "DCode",
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "build/icon.ico",
+          "to": "app-icon.ico"
+        },
+        {
+          "from": "../DCore/target/release/DCore.exe",
+          "to": "bin/DCore.exe"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "DCode"
+    },
+    "mac": {
+      "artifactName": "DCode-${version}-${arch}-mac.${ext}",
+      "target": [
+        {
+          "target": "dmg"
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "extraResources": [
+        {
+          "from": "../DCore/target/release/DCore",
+          "to": "bin/DCore"
+        },
+        {
+          "from": "build/tray-icon-mac.png",
+          "to": "tray-icon-mac.png"
+        }
+      ]
+    },
+    "dmg": {
+      "artifactName": "DCode-${version}-${arch}.${ext}",
+      "background": "build/dmg-background.png",
+      "window": {
+        "width": 720,
+        "height": 500
+      },
+      "iconSize": 96,
+      "iconTextSize": 12,
+      "contents": [
+        {
+          "x": 180,
+          "y": 240
+        },
+        {
+          "x": 540,
+          "y": 240,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "linux": {
+      "executableName": "DCode",
+      "syncDesktopName": true,
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development",
+      "extraResources": [
+        {
+          "from": "../DCore/target/release/DCore",
+          "to": "bin/DCore"
+        }
+      ]
+    }
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true,
+    "protobufjs@7.6.6": true
+  }
+}

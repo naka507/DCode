@@ -1,0 +1,32 @@
+diff --git a/out/targets/nsis/NsisTarget.js b/out/targets/nsis/NsisTarget.js
+--- a/out/targets/nsis/NsisTarget.js
++++ b/out/targets/nsis/NsisTarget.js
+@@ -353,23 +353,11 @@ class NsisTarget extends targetFactory_1.Target {
+         await this.executeMakensis(defines, commands, sharedHeader + (await this.computeFinalScript(script, false, archs)));
+         // http://forums.winamp.com/showthread.php?p=3078545
+         // TODO: remove workaround when wine is fully upgraded to 11
+-        if ((0, macosVersion_1.isMacOsCatalina)()) {
+-            try {
+-                await nsisUtil_1.UninstallerReader.exec(installerPath, uninstallerPath);
+-            }
+-            catch (error) {
+-                builder_util_1.log.warn(`packager.vm is used: ${error.message}`);
+-                const vm = await packager.vm.value;
+-                await vm.exec(installerPath, []);
+-                // Parallels VM can exit after command execution, but NSIS continue to be running
+-                let i = 0;
+-                while (!(await (0, builder_util_1.exists)(uninstallerPath)) && i++ < 100) {
+-                    // noinspection JSUnusedLocalSymbols
+-                    await new Promise((resolve, _reject) => setTimeout(resolve, 300));
+-                }
+-            }
+-        }
+-        else {
++        try {
++            await nsisUtil_1.UninstallerReader.exec(installerPath, uninstallerPath);
++        }
++        catch (error) {
++            builder_util_1.log.warn(`UninstallerReader failed: ${error.message}`);
+             const wineVm = new WineVm_1.WineVmManager((_a = packager.config.toolsets) === null || _a === void 0 ? void 0 : _a.wine);
+             await wineVm.exec(installerPath, [], { env: { __COMPAT_LAYER: "RunAsInvoker" } });
+         }

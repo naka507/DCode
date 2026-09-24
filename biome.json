@@ -1,0 +1,31 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
+	"files": {
+		"includes": [
+			"src/renderer/features/app/**/*.ts",
+			"src/renderer/features/app/**/*.vue",
+			"src/renderer/features/chat/composer/**/*.ts",
+			"src/renderer/features/chat/composer/**/*.vue",
+			"src/renderer/features/plugins/**/*.ts",
+			"src/renderer/features/plugins/**/*.vue",
+			"src/renderer/features/settings/**/*.ts",
+			"src/renderer/features/settings/**/*.vue",
+			"src/main/**/*.ts",
+			"src/shared/types/**/*.ts",
+			"scripts/check-architecture.mjs",
+			"scripts/e2e/*.mjs"
+		]
+	},
+	"formatter": {
+		"enabled": false
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "none",
+			"correctness": {
+				"noUnusedVariables": "error"
+			}
+		}
+	}
+}

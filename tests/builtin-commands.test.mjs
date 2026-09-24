@@ -1,0 +1,57 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
+
+const [registry, dispatch] = await Promise.all([
+  read("../src/main/builtin-commands.ts"),
+  read("../src/renderer/lib/commands.ts"),
+]);
+
+const coreIds = [
+  "builtin.session.new",
+  "builtin.agent.compact",
+  "builtin.mode.agent",
+  "builtin.mode.plan",
+  "builtin.mode.goal",
+];
+
+const coreAliases = ["new", "compact", "agent-mode", "plan-mode", "goal-mode"];
+
+const removedIds = [
+  "builtin.session.delete",
+  "builtin.agent.abort",
+  "builtin.project.open",
+  "builtin.project.clear",
+  "builtin.settings.open",
+  "builtin.settings.providers",
+  "builtin.settings.import",
+  "builtin.plugins.open",
+  "builtin.plugins.loadDev",
+  "builtin.logs.open",
+  "builtin.session.rename",
+  "builtin.commandPalette.show",
+  "builtin.app.reloadWindow",
+  "builtin.app.toggleDevtools",
+];
+
+test("builtin registry exposes exactly the five core commands and aliases", () => {
+  const ids = [...registry.matchAll(/\bid: "([^"]+)"/g)].map((match) => match[1]);
+  const aliases = [...registry.matchAll(/slash: "([^"]+)"/g)].map((match) => match[1]);
+
+  assert.deepEqual(ids, coreIds);
+  assert.deepEqual(aliases, coreAliases);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal(new Set(aliases).size, aliases.length);
+});
+
+test("renderer dispatch keeps only core cases and drops legacy aliases", () => {
+  for (const id of coreIds) {
+    assert.match(dispatch, new RegExp(`case "${id}"`));
+  }
+  for (const id of removedIds) {
+    assert.doesNotMatch(dispatch, new RegExp(`case "${id}"`));
+  }
+  assert.doesNotMatch(dispatch, /builtin\.(newChat|openProject|openSettings)/);
+});

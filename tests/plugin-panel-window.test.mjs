@@ -1,0 +1,249 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { dcorePath } from "./helpers/sibling-repos.mjs";
+
+const hostSource = await readFile(
+  new URL("../src/main/plugin-panel-host.ts", import.meta.url),
+  "utf8",
+);
+const preloadSource = await readFile(
+  new URL("../src/preload/plugin-panel.ts", import.meta.url),
+  "utf8",
+);
+const chromeSource = await readFile(
+  new URL("../src/shared/plugin-panel-chrome.ts", import.meta.url),
+  "utf8",
+);
+
+// The bundled catalog lives in the sibling dcore crate, so a missing sibling
+// skips the bundled-panel contract instead of failing on a missing neighbour.
+const hostCorePluginPath = dcorePath(
+  "crates/host-core/src/plugins/marketplace/catalog.rs",
+);
+
+const skip =
+  hostCorePluginPath === null
+    ? "needs the dcore checkout beside dcode"
+    : false;
+
+const hostCorePluginSource = skip ? "" : await readFile(hostCorePluginPath, "utf8");
+const bundledPanelSources = [
+  ...hostCorePluginSource.matchAll(/"renderer\/index\.html",\s*br#"(.*?)"#,/gs),
+].map((match) => match[1]);
+
+// dcode ships its own panels under resources/plugins/, and the host-core crate
+// ships the marketplace ones. Both are checked in, so both are read from this
+// repository (or the sibling that owns them) rather than from a copy.
+const shippedPanelSources = await Promise.all(
+  [
+    "../resources/plugins/pi.file-manager/views/index.html",
+    "../resources/plugins/pi.browser/views/browser.html",
+  ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+);
+
+test("plugin panels match the cross-platform main-window chrome contract", () => {
+  assert.match(hostSource, /frame: false/);
+  assert.doesNotMatch(hostSource, /titleBarStyle|trafficLightPosition/);
+  assert.match(
+    hostSource,
+    /backgroundColor: widget \? "#00000000" : builtinWindowBackground\(request\.theme\)/,
+  );
+  assert.match(hostSource, /win\.setMenu\(null\)/);
+  assert.match(hostSource, /pi-plugin-panel-development=1/);
+  assert.match(chromeSource, /PLUGIN_PANEL_TITLEBAR_HEIGHT = 46/);
+  assert.match(preloadSource, /-webkit-app-region: drag/);
+  assert.match(preloadSource, /className = "capsule"/);
+  assert.match(preloadSource, /top: 9px/);
+  assert.match(preloadSource, /right: 8px/);
+  assert.match(preloadSource, /width: 96px/);
+  assert.match(preloadSource, /height: 28px/);
+  assert.match(preloadSource, /border-radius: 999px/);
+  assert.match(preloadSource, /controls\.append\(minimize, maximize, close\)/);
+  const capsuleBlock = preloadSource.slice(
+    preloadSource.indexOf("    .capsule {"),
+    preloadSource.indexOf("    .control {"),
+  );
+  assert.doesNotMatch(capsuleBlock, /box-shadow:|backdrop-filter:/);
+  assert.doesNotMatch(preloadSource, /function panelTitle|panelTitle\(/);
+  assert.doesNotMatch(preloadSource, /platform-darwin|padding-left: 76px|width: 112px/);
+});
+
+test("plugin panel window controls stay private, bounded, and accessible", () => {
+  for (const action of ["getState", "minimize", "toggleMaximize", "close"]) {
+    assert.match(chromeSource, new RegExp(`"${action}"`));
+  }
+  assert.match(hostSource, /isPluginPanelWindowControlAction\(rawAction\)/);
+  assert.match(hostSource, /this\.windowForSender\(event\.sender\.id\)/);
+  assert.match(preloadSource, /attachShadow\(\{ mode: "closed" \}\)/);
+  assert.match(preloadSource, /setAttribute\("aria-label", label\)/);
+  assert.match(preloadSource, /focus-visible/);
+  assert.match(preloadSource, /pageColor\("backgroundColor"/);
+  assert.match(preloadSource, /--pi-plugin-panel-page-background/);
+  assert.match(preloadSource, /cursor: pointer/);
+  const publicBridgeSource = preloadSource.slice(
+    preloadSource.indexOf("const bridge ="),
+    preloadSource.indexOf('contextBridge.exposeInMainWorld("pluginBridge"'),
+  );
+  assert.doesNotMatch(
+    publicBridgeSource,
+    /windowControl|PLUGIN_PANEL_WINDOW_CONTROL_CHANNEL/,
+  );
+});
+
+test("plugin panels expose host-owned dropped-file authorization", () => {
+  assert.match(preloadSource, /webUtils\.getPathForFile\(file\)/);
+  assert.match(preloadSource, /pi-plugin-panel-drop/);
+  assert.match(preloadSource, /event\.dataTransfer\?\.files/);
+  assert.match(hostSource, /fs\.registerDropped/);
+  assert.match(hostSource, /consumeDroppedPath\(event\.sender\.id, payload\?\.path\)/);
+  assert.match(hostSource, /DROPPED_PATH_TTL_MS/);
+});
+
+test("plugin panel close does not read destroyed webContents", () => {
+  assert.match(
+    hostSource,
+    /const webContentsId = win\.webContents\.id;\s*if \(widget\) this\.widgetLocales\.set\(webContentsId, request\.locale\);\s*win\.on\("closed", \(\) => \{\s*this\.pendingDrops\.delete\(webContentsId\);/,
+    // The widget locale is cleared with the same captured id, never through a
+    // destroyed webContents object.
+  );
+  const closedHandler = hostSource.slice(
+    hostSource.indexOf('win.on("closed"'),
+    hostSource.indexOf("this.windows.set(request.pluginId, win);"),
+  );
+  assert.doesNotMatch(closedHandler, /win\.webContents/);
+});
+
+test("plugin content is offset below the strict 46px host drag band", () => {
+  assert.match(preloadSource, /getComputedStyle\(body\)\.paddingTop/);
+  assert.match(preloadSource, /padding-top/);
+  assert.match(preloadSource, /PLUGIN_PANEL_CHROME_META_NAME/);
+  assert.match(preloadSource, /PLUGIN_PANEL_CHROME_VERSION/);
+  assert.match(preloadSource, /pluginOwnsTitlebarSpacing/);
+  assert.match(preloadSource, /PLUGIN_PANEL_TITLEBAR_HEIGHT/);
+  assert.match(preloadSource, /--pi-plugin-titlebar-height/);
+  assert.match(preloadSource, /isDevelopmentPanel/);
+  assert.match(preloadSource, /safe-area-hint/);
+  assert.match(preloadSource, /顶部 46px 为拖拽区/);
+  assert.match(preloadSource, /--pi-plugin-panel-theme=/);
+  assert.match(preloadSource, /PLUGIN_PANEL_LOCALE_ARGUMENT_PREFIX/);
+  assert.match(preloadSource, /function chromeLabels\(input = panelLocale\(\)\)/);
+  assert.match(preloadSource, /input\.replaceAll\("_", "-"\)\.toLowerCase\(\)/);
+  assert.match(preloadSource, /appearance\?\.locale/);
+  assert.match(preloadSource, /labels = chromeLabels\(appearance\.locale\)/);
+  assert.match(preloadSource, /host\.dataset\.theme = theme/);
+  assert.match(preloadSource, /className = "drag-region"/);
+  assert.match(preloadSource, /prefers-reduced-motion: reduce/);
+});
+
+test("plugin panel documents use the compact global scrollbar contract", () => {
+  assert.match(preloadSource, /function installPluginScrollbarStyle\(\)/);
+  assert.match(
+    preloadSource,
+    /::-webkit-scrollbar\s*\{[\s\S]*?width: 6px;[\s\S]*?height: 6px;/,
+  );
+  assert.match(preloadSource, /::-webkit-scrollbar-track[\s\S]*?background: transparent/);
+  assert.match(preloadSource, /:focus-within::\-webkit-scrollbar-thumb/);
+  assert.match(preloadSource, /\[data-scrolling\]::\-webkit-scrollbar-thumb/);
+  assert.match(preloadSource, /document\.addEventListener\("scroll", onScroll/);
+  assert.match(preloadSource, /installPluginScrollbarStyle\(\);/);
+});
+
+test("paint-through panels let page content draw and receive pointer events", () => {
+  assert.match(chromeSource, /PLUGIN_PANEL_CHROME_PAINT_THROUGH_VERSION = "v3"/);
+  assert.match(preloadSource, /type PluginPanelChromeMode = "legacy" \| "safe-area" \| "paint-through"/);
+  assert.match(preloadSource, /host\.dataset\.chromeMode = chromeMode/);
+  assert.match(
+    preloadSource,
+    /:host\(\[data-chrome-mode="paint-through"\]\) \.drag-region[\s\S]*-webkit-app-region: no-drag;[\s\S]*pointer-events: none;/,
+  );
+  assert.match(preloadSource, /className = "drag-segment"/);
+  assert.match(preloadSource, /data-pi-plugin-no-drag/);
+  assert.match(preloadSource, /installPaintThroughDragMap\(dragRegion\)/);
+  // The host capsule and computed empty-space segments remain in the shadow
+  // tree; holes in the segment map expose page controls to real pointer input.
+  assert.match(preloadSource, /className = "capsule"/);
+  assert.match(preloadSource, /controls\.append\(minimize, maximize, close\)/);
+});
+
+test("dcode's shipped plugin panels follow the host chrome contract", () => {
+  assert.equal(shippedPanelSources.length, 2);
+  for (const panelSource of shippedPanelSources) {
+    // The marker is what selects the `safe-area` chrome mode, so a panel that
+    // lost it would silently fall back to the legacy 46px offset.
+    assert.match(panelSource, /meta name="pi-plugin-chrome" content="v2"/);
+    // The preload keeps the titlebar band for the host capsule; a panel must
+    // never claim the top edge itself or its content slides under the controls.
+    assert.doesNotMatch(panelSource, /top:\s*0/);
+  }
+});
+
+test("the host-core bundled plugin panels follow the host chrome contract", { skip }, () => {
+  assert.equal(bundledPanelSources.length, 2);
+  for (const panelSource of bundledPanelSources) {
+    assert.match(panelSource, /meta name="pi-plugin-chrome" content="v2"/);
+    // The host-core panels ship dcode's product name and derive their own
+    // offset from the published titlebar variable, so the drag-band contract
+    // is asserted in full for them.
+    assert.match(
+      panelSource,
+      /dcode reserves exactly a transparent 46px drag band/,
+    );
+    assert.match(panelSource, /var\(--pi-plugin-titlebar-height, 46px\)/);
+    assert.doesNotMatch(panelSource, /top:\s*0/);
+  }
+});
+
+test("floating widgets are transparent, chromeless, and still dismissible", () => {
+  // The manifest field has to reach the window: transparent surface, no band,
+  // no capsule, and a smaller minimum than a panel's.
+  assert.match(chromeSource, /PLUGIN_PANEL_WIDGET_ARGUMENT = "--pi-plugin-panel-widget=1"/);
+  assert.match(
+    chromeSource,
+    /PLUGIN_PANEL_WIDGET_MIN_SIZE = \{ width: 120, height: 120 \} as const/,
+  );
+  assert.match(chromeSource, /PLUGIN_PANEL_MIN_SIZE = \{ width: 360, height: 280 \} as const/);
+  assert.match(hostSource, /const widget = request\.shape === "widget";/);
+  assert.match(hostSource, /transparent: widget,/);
+  assert.match(hostSource, /backgroundColor: widget \? "#00000000"/);
+  assert.match(hostSource, /hasShadow: !widget,/);
+  assert.match(hostSource, /skipTaskbar: widget,/);
+  assert.match(hostSource, /maximizable: !widget,/);
+  assert.match(hostSource, /resizable: request\.resizable \?\? !widget,/);
+  assert.match(hostSource, /alwaysOnTop: widget && request\.alwaysOnTop === true,/);
+  assert.match(hostSource, /\.\.\.\(widget \? \[PLUGIN_PANEL_WIDGET_ARGUMENT\] : \[\]\),/);
+
+  // The preload owns the placement: titlebar height 0, no capsule, and a drag
+  // map over the whole window instead of the 46px band.
+  assert.match(preloadSource, /function isWidgetPanel\(\): boolean/);
+  assert.match(
+    preloadSource,
+    /isEmbeddedPanel\(\) \|\| isWidgetPanel\(\) \? 0 : PLUGIN_PANEL_TITLEBAR_HEIGHT/,
+  );
+  assert.match(preloadSource, /isWidgetPanel\(\) \|\| pluginChromeMode\(\) !== "legacy"/);
+  assert.match(preloadSource, /data-pi-plugin-panel-shape/);
+  assert.match(preloadSource, /function installWidgetDragMap\(dragRegion: HTMLElement\): void/);
+  assert.match(preloadSource, /host\.dataset\.chromeMode = "widget"/);
+  assert.match(preloadSource, /installWidgetDragMap\(dragRegion\);/);
+  const widgetBranch = preloadSource.slice(
+    preloadSource.indexOf("if (isWidgetPanel()) {"),
+    preloadSource.indexOf("let labels = chromeLabels();"),
+  );
+  assert.ok(widgetBranch.length > 0, "the widget branch must return before the capsule exists");
+  assert.doesNotMatch(widgetBranch, /className = "capsule"/);
+  // The segment map is the only drag route, so its holes must come from the
+  // same no-drag selector the panel band uses.
+  assert.match(preloadSource, /paintThroughDragSegments\(/);
+  assert.match(preloadSource, /paintThroughNoDragRects\(\)/);
+
+  // A widget has no capsule to close it, so the host menu is the way out.
+  assert.match(chromeSource, /"contextMenu",/);
+  assert.match(preloadSource, /invoke\(PLUGIN_PANEL_WINDOW_CONTROL_CHANNEL, "contextMenu"\)/);
+  assert.match(hostSource, /private showWidgetMenu\(window: BrowserWindow\): void/);
+  assert.match(hostSource, /catalogs\[resolveLocale\(locale\)\]\.pluginPanelWidget/);
+  assert.match(hostSource, /private widgetLocales = new Map<number, string>\(\);/);
+  assert.match(hostSource, /if \(widget\) this\.widgetLocales\.set\(webContentsId, request\.locale\);/);
+  assert.match(hostSource, /this\.widgetLocales\.delete\(webContentsId\);/);
+  // A panel that asks for the widget menu gets nothing: only widgets register.
+  assert.match(hostSource, /if \(locale === undefined\) return;/);
+});
