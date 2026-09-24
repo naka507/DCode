@@ -106,6 +106,10 @@ export const BUILTIN_SKILLS_MANIFEST: readonly BuiltinSkillManifestItem[] = [
     file: "react-best-practices.md",
   },
   {
+    id: "dcode/vue-best-practices",
+    file: "vue-best-practices.md",
+  },
+  {
     id: "dcode/agent-browser",
     file: "agent-browser.md",
   },

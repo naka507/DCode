@@ -28,7 +28,7 @@ const enEntries: ChangelogEntry[] = [
     version: "1.0.4",
     date: "2026-09-25",
     highlights: [
-      "Core engineering skills catalog: integrated dcode/react-best-practices, dcode/agent-browser, dcode/dogfood, and dcode/electron with on-demand zero-overhead loading via the Skill tool.",
+      "Core engineering skills catalog: integrated dcode/vue-best-practices, dcode/react-best-practices, dcode/agent-browser, dcode/dogfood, and dcode/electron with on-demand zero-overhead loading via the Skill tool.",
       "Curated MCP preset catalog & remote sync: one-click preset chips for Context7, GitHub, Memory, Fetch, SQLite, Postgres, Filesystem, Puppeteer, Docker, with cross-platform command sanitization and path translation for SSH remote hosts.",
       "Work panel terminal plugin: interactive shell runner with cross-platform shell auto-detection (PowerShell/CMD/Bash/Zsh), quick action pills, command history navigation, and native agent tool execution.",
       "Work panel documents plugin: rich Markdown reader with automatic reading metrics, interactive table of contents outline, preview/raw toggle, and embedded PDF viewer.",
@@ -89,7 +89,7 @@ const zhCNEntries: ChangelogEntry[] = [
     version: "1.0.4",
     date: "2026-09-25",
     highlights: [
-      "核心工程技能包按需加载：内置 dcode/react-best-practices、dcode/agent-browser、dcode/dogfood 与 dcode/electron，通过 Skill 工具动态激活，闲置时零上下文与零内存损耗。",
+      "核心工程技能包按需加载：内置 dcode/vue-best-practices、dcode/react-best-practices、dcode/agent-browser、dcode/dogfood 与 dcode/electron，通过 Skill 工具动态激活，闲置时零上下文与零内存损耗。",
       "精选 MCP 预设中心与跨平台远端同步：内置 Context7、GitHub、Memory、Fetch、SQLite、Postgres 等 9 大常用预设并支持一键填充，通过 SSH 远端主机同步时自动转换跨平台路径与可执行命令。",
       "工作面板内置终端插件 (terminal)：集成交互式 Shell 终端，跨平台自动探测平台默认 Shell（PowerShell/CMD/Bash/Zsh），提供快捷指令卡片、历史命令回溯及智能体工具直连执行能力。",
       "工作面板内置文档插件 (documents)：集成丰富文档阅读与大纲导航面板，支持 Markdown 阅读时长与字数统计、分级大纲目录跳转、源码与预览切换，并原生支持 PDF 渲染浏览。",

@@ -11,6 +11,7 @@ describe("builtinSkills", () => {
     const ids = BUILTIN_SKILLS_MANIFEST.map((s) => s.id);
     expect(ids).toContain("dcode/plugin-development");
     expect(ids).toContain("dcode/react-best-practices");
+    expect(ids).toContain("dcode/vue-best-practices");
     expect(ids).toContain("dcode/agent-browser");
     expect(ids).toContain("dcode/dogfood");
     expect(ids).toContain("dcode/electron");
@@ -18,9 +19,10 @@ describe("builtinSkills", () => {
 
   it("listAllBuiltinSkills returns all shipped skills with body and metadata", () => {
     const all = listAllBuiltinSkills();
-    expect(all.length).toBe(5);
+    expect(all.length).toBe(6);
     const ids = all.map((s) => s.id);
     expect(ids).toContain("dcode/react-best-practices");
+    expect(ids).toContain("dcode/vue-best-practices");
     expect(ids).toContain("dcode/agent-browser");
     expect(ids).toContain("dcode/dogfood");
     expect(ids).toContain("dcode/electron");
@@ -36,6 +38,7 @@ describe("builtinSkills", () => {
     const skills = builtinSkills({ workspacePath: null });
     const ids = skills.map((s) => s.id);
     expect(ids).toContain("dcode/react-best-practices");
+    expect(ids).toContain("dcode/vue-best-practices");
     expect(ids).toContain("dcode/agent-browser");
     expect(ids).toContain("dcode/dogfood");
     expect(ids).toContain("dcode/electron");
@@ -52,6 +55,15 @@ describe("builtinSkills", () => {
     const reactShort = loadBuiltinSkillBody("react-best-practices");
     expect(reactShort).not.toBeNull();
     expect(reactShort?.body).toBe(reactFull?.body);
+
+    const vueFull = loadBuiltinSkillBody("dcode/vue-best-practices");
+    expect(vueFull).not.toBeNull();
+    expect(vueFull?.name).toBe("Vue Best Practices");
+    expect(vueFull?.body).toContain("Reactivity & State Optimization");
+
+    const vueShort = loadBuiltinSkillBody("vue-best-practices");
+    expect(vueShort).not.toBeNull();
+    expect(vueShort?.body).toBe(vueFull?.body);
 
     const browser = loadBuiltinSkillBody("dcode/agent-browser");
     expect(browser).not.toBeNull();
