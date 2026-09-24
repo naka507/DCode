@@ -67,6 +67,7 @@ import WorkingIndicator from "./WorkingIndicator.vue";
 import TranscriptHistory from "./TranscriptHistory.vue";
 import TranscriptTail from "./TranscriptTail.vue";
 import AgentStatusCapsule from "../../../components/AgentStatusCapsule.vue";
+import PlanStatusCapsule from "../../../components/PlanStatusCapsule.vue";
 import { isDelegationStartTool } from "../../../lib/tool-display";
 import { useTranscriptScroll } from "./hooks/useTranscriptScroll";
 
@@ -447,6 +448,11 @@ function returnToLatest(): void {
       :messages="props.messages"
       :is-running="props.isRunning"
       :is-browsing-history="Boolean(showJump || props.readingWindow)"
+    />
+
+    <PlanStatusCapsule
+      v-if="props.paneVisible"
+      :session-id="props.sessionId"
     />
   </div>
     <ContextMenu :state="contextMenu" @close="closeContextMenu" />
