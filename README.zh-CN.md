@@ -13,7 +13,7 @@
 
 ## 项目状态 (Status)
 
-- **当前版本线 (Release Line):** `1.0.x` (当前稳定版本: `1.0.4`)
+- **当前版本线 (Release Line):** `1.0.x` (当前稳定版本: `1.0.5`)
 - **开源协议 (License):** Apache License 2.0 (Apache-2.0)
 
 ---
@@ -60,7 +60,7 @@ DCode 采用清晰的分层多进程架构，具备严格的权责边界与安�
 - 📝 **规划模式全闭环与交互胶囊 (Plan Mode Closed-Loop & Capsule Popover)**：在计划生成与分步执行过程中，主会话右上角以极简状态胶囊实时呈现任务名、执行阶段与脉冲动画；点击直接弹出轻量半透明详情气泡面板，展示多阶段任务清单、步骤打勾状态、总体百分比进度条，并提供一键定位计划产物（Artifact）及复制执行摘要功能，不侵占或打扰右侧大工作区。
 - 🔌 **插件扩展体系 (Plugin SDK & DevKit)**：提供完善的插件 SDK 与脚手架命令行工具（`pi-plugin`），支持自定义 Webview 侧边面板、智能体工具扩展（Agent Tools）、命令注册与自定义技能包（Skills）。
 - 🛡️ **安全托管与权限沙箱 (Safe Managed Mode)**：内置安全托管模式（`auto`）。大模型在当前项目配置的工作区目录、`.dcode` 记忆与配置目录、以及历史已授权路径内享有完全操作权限（自由创建、修改及删除），无需弹窗打扰；越界外部路径由特权宿主底层直接静默阻断（Fail-Fast），将拒信反馈给模型且绝不打断任务执行流。
-- 📊 **上下文容量细分与思考过程精准洞察 (Context Capacity & Reasoning Inspector)**：输入框集成实时上下文容量监控环与多色段位细分面板。深度兼容 DeepSeek R1、Claude 3.7 及 OpenAI o-系列思考模型，将推理思考过程（Reasoning）从普通对话消息中独立剥离与高亮呈现；精确统计模型上下文上限、已用 Token、系统提示词（System Prompt）、系统/扩展工具（Tools）、思考推理（Reasoning）与对话历史（Messages）的真实占比与缓存命中率。
+- 📊 **上下文容量细分与思考过程精准洞察 (Context Capacity & Reasoning Inspector)**：输入框集成实时上下文容量监控环与多色段位细分面板，业务逻辑完全转移至后端 Agent Runtime。基于物理 Schema 与提示词字符实现严格 Token 守恒，真实展示技能目录（Skills）与第三方 MCP 工具占比；深度兼容 DeepSeek R1、Claude 3.7 及 OpenAI o-系列思考模型，将推理思考过程（Reasoning）精准度量呈现；重构占用计算公式，彻底解决缓存命中/失效导致的容量剧烈抖动与意外缩水。
 - ⚡ **微型静默压缩机制 (Microcompact)**：引入历史工具输出智能修剪算法。会话推进中自动保留最近轮次的工具执行细节，对更早轮次的超大文件读取（`ReadFile`）、终端命令（`Bash`）或搜索输出静默替换为轻量占位符，零大模型 API 开销即可直接节省 50%~80% 上下文，大幅延缓上下文溢出。
 - 📈 **动态规划阶段与工作流追踪 (Plan/Goal Workflow Stage Stepper)**：在规划与目标模式（Plan/Goal Mode）的审核执行栏中，自动从 Markdown 计划中解析出多阶段（Phases）与细分步骤（Steps），通过动态阶段步进器直观展现当前状态（已完成、进行中、待开始）与执行进度。
 - 🎨 **现代化设计系统与全平台字体排版优化**：规范化 `--text-ui-*` 语义字体梯度，全局等宽字体栈内置优化后的 CJK 字体回退序列（微软雅黑/PingFang SC/Noto Sans CJK），完美解决 Windows 平台下终端与代码段中的中文排版锯齿问题。原生支持深浅主题自适应与 macOS 原生毛玻璃视觉效果。

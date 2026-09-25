@@ -173,6 +173,7 @@ import {
   SKILL_TOOL_NAME,
   type PluginSkillDef,
 } from "./plugin-skills-prompt.js";
+import { buildContextBreakdownSnapshot } from "./context-breakdown.js";
 import { pluginSkillsDigest } from "./plugin-skills.js";
 import {
   openCodeEndpointFromProvider,
@@ -6879,6 +6880,15 @@ Delegation rules:
             systemPromptText.length > 0
               ? Math.ceil(systemPromptText.length / 3)
               : undefined;
+          const contextBreakdown = buildContextBreakdownSnapshot({
+            systemPromptText,
+            skills: this.pluginSkills,
+            skillsPromptText: pluginSkillsPrompt(this.pluginSkills) ?? "",
+            activeTools: this.activeTools(),
+            messages: this.agent?.state?.messages ?? [],
+            usage,
+            nextThinking,
+          });
           const hostedSearch = hostedSearchFromMessage({
             content: (event.message as any).content,
             citations: (event.message as any).hostedSearchCitations,
@@ -6950,6 +6960,7 @@ Delegation rules:
               providerId: this.provider.id,
               ...(usage ? { usage } : {}),
               ...(systemPromptTokens !== undefined ? { systemPromptTokens } : {}),
+              contextBreakdown,
             };
             this.emit({ type: "message_update", message: this.currentAssistant });
             this.streamStartedAt = undefined;
@@ -6998,6 +7009,7 @@ Delegation rules:
               providerId: this.provider.id,
               ...(usage ? { usage } : {}),
               ...(systemPromptTokens !== undefined ? { systemPromptTokens } : {}),
+              contextBreakdown,
             };
             this.emit({ type: "message_update", message: this.currentAssistant });
             this.streamStartedAt = undefined;
@@ -7029,6 +7041,7 @@ Delegation rules:
               providerId: this.provider.id,
               ...(usage ? { usage } : {}),
               ...(systemPromptTokens !== undefined ? { systemPromptTokens } : {}),
+              contextBreakdown,
             };
             this.emit({ type: "message_update", message: this.currentAssistant });
             this.streamStartedAt = undefined;
@@ -7062,6 +7075,7 @@ Delegation rules:
             providerId: this.provider.id,
             ...(usage ? { usage } : {}),
             ...(systemPromptTokens !== undefined ? { systemPromptTokens } : {}),
+            contextBreakdown,
             ...(responseDurationMs !== undefined ? { responseDurationMs } : {}),
             ...(responseOutputTokens !== undefined
               ? { responseOutputTokens }

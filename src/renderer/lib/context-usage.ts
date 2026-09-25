@@ -1,6 +1,8 @@
 import {
   effectiveContextWindow,
   modelIdsMatch,
+  type ContextBreakdownItem,
+  type ContextBreakdownSource,
   type ContextUsageDisplay,
   type MessageUsage,
   type ModelBinding,
@@ -9,6 +11,8 @@ import {
   type ToolTokenUsage,
   type UiMessage,
 } from "@dcode/shared";
+
+export type { ContextBreakdownItem, ContextBreakdownSource };
 
 export const DEFAULT_CONTEXT_WINDOW = 128_000;
 
@@ -25,18 +29,16 @@ export function usageTokenTotal(usage: MessageUsage): number {
 }
 
 /**
- * Occupancy of one model request, matching OpenCode's context widget:
- * `input + output + reasoning + cache.read + cache.write` on that request.
- * Cache reads from earlier tool-loop calls are not occupancy.
+ * Occupancy of the model context for the current request.
+ * Uses provider-reported `totalTokens` (prompt + completion) to avoid
+ * double-counting cached tokens or reasoning tokens.
  */
 export function contextOccupancyTokens(usage: MessageUsage): number {
-  const occupancy =
-    positiveTokenCount(usage.inputTokens) +
-    positiveTokenCount(usage.outputTokens) +
-    positiveTokenCount(usage.reasoningTokens) +
-    positiveTokenCount(usage.cacheReadTokens) +
-    positiveTokenCount(usage.cacheWriteTokens);
-  return occupancy > 0 ? occupancy : usageTokenTotal(usage);
+  const reportedTotal = positiveTokenCount(usage.totalTokens);
+  if (reportedTotal > 0) return reportedTotal;
+  const inputOutput =
+    positiveTokenCount(usage.inputTokens) + positiveTokenCount(usage.outputTokens);
+  return inputOutput > 0 ? inputOutput : usageTokenTotal(usage);
 }
 
 export function latestMessageUsage(messages: UiMessage[]): MessageUsage | undefined {
@@ -380,26 +382,11 @@ export function formatContextCapacityTokens(
   return `${formatted}M`;
 }
 
-export type ContextBreakdownItem = {
-  key:
-    | "messages"
-    | "reasoning"
-    | "systemTools"
-    | "systemPrompt"
-    | "skills"
-    | "mcp"
-    | "other";
-  labelKey: string;
-  colorClass: string;
-  tokens: number;
-  percent: number;
-  formattedPercent: string;
-};
-
 export type ContextBreakdownOptions = {
   usage: MessageUsage;
   tools?: UiMessage[];
   systemPromptTokens?: number;
+  contextBreakdown?: ContextBreakdownItem[];
 };
 
 /**
@@ -408,16 +395,19 @@ export type ContextBreakdownOptions = {
  *  - reasoning (Thinking / reasoning tokens from model)
  *  - systemTools (Built-in tools: Bash, ReadFile, EditFile, etc.)
  *  - systemPrompt (Base system prompt)
- *  - skills (Tools starting with skill_)
- *  - mcp (Tools starting with mcp_ or plugin_)
+ *  - skills (Plugin skills)
+ *  - mcp (MCP and plugin tools)
  *  - other (Compaction overhead / residual)
  *
- * Each category's percentage is relative to `usedTokens` (total context occupancy).
- * If usedTokens is 0, all categories report 0%.
+ * If `contextBreakdown` is provided by the backend runtime, it is returned directly.
+ * Otherwise, falls back to local estimation for legacy message compatibility.
  */
 export function calculateContextBreakdown(
   options: ContextBreakdownOptions,
 ): ContextBreakdownItem[] {
+  if (options.contextBreakdown && options.contextBreakdown.length > 0) {
+    return options.contextBreakdown;
+  }
   const { usage, tools = [], systemPromptTokens = 0 } = options;
   const totalOccupancy = contextOccupancyTokens(usage);
 

@@ -139,7 +139,7 @@ test("context usage falls back to input and output when total is absent", () => 
   );
 });
 
-test("occupancy sums last-request input, output, reasoning, and cache", () => {
+test("occupancy uses provider totalTokens without double-counting cache or reasoning", () => {
   const usage = {
     inputTokens: 10,
     outputTokens: 5,
@@ -148,9 +148,19 @@ test("occupancy sums last-request input, output, reasoning, and cache", () => {
     reasoningTokens: 3,
     totalTokens: 15,
   };
-  assert.equal(contextOccupancyTokens(usage), 100);
-  assert.equal(calculateContextUsage(usage, 200).usedTokens, 100);
+  assert.equal(contextOccupancyTokens(usage), 15);
+  assert.equal(calculateContextUsage(usage, 200).usedTokens, 15);
   assert.equal(usageTokenTotal(usage), 15);
+});
+
+test("occupancy falls back to inputTokens + outputTokens when totalTokens is 0", () => {
+  const usage = {
+    inputTokens: 10,
+    outputTokens: 5,
+    totalTokens: 0,
+  };
+  assert.equal(contextOccupancyTokens(usage), 15);
+  assert.equal(calculateContextUsage(usage, 200).usedTokens, 15);
 });
 
 test("generation throughput uses provider output and stream duration", () => {
@@ -386,5 +396,71 @@ test("calculateContextBreakdown separates reasoning tokens from messages", () =>
   assert.equal(byKey.reasoning.formattedPercent, "40%");
   assert.equal(byKey.messages.tokens, 900);
   assert.equal(byKey.messages.formattedPercent, "45%");
+});
+
+test("calculateContextBreakdown passes through backend-computed contextBreakdown directly", () => {
+  const mockBackendBreakdown = [
+    {
+      key: "messages",
+      labelKey: "chat.usageBreakdownMessages",
+      colorClass: "dot-messages",
+      tokens: 500,
+      chars: 2000,
+      percent: 50,
+      formattedPercent: "50%",
+    },
+    {
+      key: "reasoning",
+      labelKey: "chat.usageBreakdownReasoning",
+      colorClass: "dot-reasoning",
+      tokens: 200,
+      chars: 800,
+      percent: 20,
+      formattedPercent: "20%",
+    },
+    {
+      key: "systemTools",
+      labelKey: "chat.usageBreakdownSystemTools",
+      colorClass: "dot-system-tools",
+      tokens: 150,
+      chars: 600,
+      percent: 15,
+      formattedPercent: "15%",
+    },
+    {
+      key: "systemPrompt",
+      labelKey: "chat.usageBreakdownSystemPrompt",
+      colorClass: "dot-system-prompt",
+      tokens: 100,
+      chars: 400,
+      percent: 10,
+      formattedPercent: "10%",
+    },
+    {
+      key: "skills",
+      labelKey: "chat.usageBreakdownSkills",
+      colorClass: "dot-skills",
+      tokens: 30,
+      chars: 120,
+      percent: 3,
+      formattedPercent: "3%",
+    },
+    {
+      key: "mcp",
+      labelKey: "chat.usageBreakdownMcp",
+      colorClass: "dot-mcp",
+      tokens: 20,
+      chars: 80,
+      percent: 2,
+      formattedPercent: "2%",
+    },
+  ];
+
+  const result = calculateContextBreakdown({
+    usage: { inputTokens: 800, outputTokens: 200, totalTokens: 1000 },
+    contextBreakdown: mockBackendBreakdown,
+  });
+
+  assert.deepEqual(result, mockBackendBreakdown);
 });
 

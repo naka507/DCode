@@ -4,6 +4,25 @@ import type { AppError } from "../errors.js";
 
 export type UiMessageRole = "user" | "assistant" | "system" | "tool";
 
+export type ContextBreakdownSource =
+  | "messages"
+  | "reasoning"
+  | "systemTools"
+  | "systemPrompt"
+  | "skills"
+  | "mcp"
+  | "other";
+
+export type ContextBreakdownItem = {
+  key: ContextBreakdownSource;
+  labelKey: string;
+  colorClass: string;
+  tokens: number;
+  chars?: number;
+  percent: number;
+  formattedPercent: string;
+};
+
 export type MessageUsage = {
   inputTokens: number;
   outputTokens: number;
@@ -86,6 +105,8 @@ export type UiMessage = {
   usage?: MessageUsage;
   /** Estimated system prompt token count for this turn's context snapshot. */
   systemPromptTokens?: number;
+  /** Accurate context capacity breakdown snapshot for this turn. */
+  contextBreakdown?: ContextBreakdownItem[];
   /** Elapsed model streaming time used to calculate output throughput. */
   responseDurationMs?: number;
   /** Output tokens used only for throughput when a stopped stream has no final usage. */

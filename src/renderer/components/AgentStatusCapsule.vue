@@ -107,53 +107,63 @@ const isRunning = computed(() => {
 // Latest messages in active session
 const latestMessages = computed(() => props.messages ?? (store.appState?.messages ?? []));
 
-// Extract the latest assistant turn to inspect currently invoked subagents
-const latestAssistantTurn = computed<AssistantTurnEntry | undefined>(() => {
+// All activity items across all assistant turns in the session to ensure all running subagents are captured
+const allSessionActivityItems = computed<AssistantActivityItem[]>(() => {
   const { entries } = buildTranscriptEntries(latestMessages.value);
-  for (let i = entries.length - 1; i >= 0; i--) {
-    const entry = entries[i];
-    if (entry.kind === "assistant-turn") {
-      return entry;
-    }
-  }
-  return undefined;
-});
-
-// All activity items from the latest turn
-const allTurnActivityItems = computed<AssistantActivityItem[]>(() => {
-  const turn = latestAssistantTurn.value;
-  if (!turn) return [];
   const items: AssistantActivityItem[] = [];
-  for (const part of turn.parts) {
-    if (part.kind === "activity") {
-      items.push(...part.items);
+  for (const entry of entries) {
+    if (entry.kind === "assistant-turn") {
+      for (const part of entry.parts) {
+        if (part.kind === "activity") {
+          items.push(...part.items);
+        }
+      }
     }
   }
   return items;
 });
 
-// Subagents in the latest turn
+// All subagents invoked across the session (deduplicated by delegationId, keeping latest instance)
 const turnDelegationItems = computed<DelegationActivityItem[]>(() => {
-  return allTurnActivityItems.value.filter(isDelegationActivityItem);
+  const items = allSessionActivityItems.value.filter(isDelegationActivityItem);
+  const map = new Map<string, DelegationActivityItem>();
+  for (const item of items) {
+    const id = delegationIdForMessage(item.message);
+    map.set(id, item);
+  }
+  return Array.from(map.values());
 });
 
 const delegationStatuses = computed(() =>
-  collectDelegationStatuses(allTurnActivityItems.value, {
+  collectDelegationStatuses(allSessionActivityItems.value, {
     turnLive: isRunning.value,
   }),
 );
 
 const delegationTimings = computed(() =>
-  collectDelegationTimings(allTurnActivityItems.value),
+  collectDelegationTimings(allSessionActivityItems.value),
 );
 
 const delegationFailures = computed(() =>
-  collectDelegationFailures(allTurnActivityItems.value),
+  collectDelegationFailures(allSessionActivityItems.value),
 );
 
-// Network failure / rate limit / retry / waiting pattern
+/** Detect whether PlanStatusCapsule is currently visible in this session */
+const hasPlanCapsule = computed(() => {
+  if (!targetSessionId.value) return false;
+  const p = store.appState?.planCheckpoints[targetSessionId.value];
+  if (!p) return false;
+  return (
+    p.status === "pending" ||
+    p.executionState === "running" ||
+    p.executionState === "queued" ||
+    p.executionState === "completed"
+  );
+});
+
+// Network failure / rate limit pattern (accurate network & HTTP 429/5xx faults, excluding benign generic words)
 const NETWORK_OR_WAITING_PATTERN =
-  /ECONNREFUSED|ECONNRESET|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|EPIPE|ENETUNREACH|EHOSTUNREACH|UND_ERR|fetch failed|socket hang up|network error|connection error|connection refused|dns|rate_limit|rate limit|429|timeout|retry|waiting/i;
+  /ECONNREFUSED|ECONNRESET|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|EPIPE|ENETUNREACH|EHOSTUNREACH|UND_ERR|fetch failed|socket hang up|network error|connection error|connection refused|dns|rate_limit|rate limit|429|gateway timeout|504|bad gateway|502/i;
 
 function isNetworkOrWaiting(
   delegationId: string,
@@ -163,38 +173,53 @@ function isNetworkOrWaiting(
 ): boolean {
   if (outcome === "timed_out") return true;
 
-  const failure = failures.get(delegationId);
-  if (failure) {
-    if (
-      NETWORK_OR_WAITING_PATTERN.test(failure.message) ||
-      NETWORK_OR_WAITING_PATTERN.test(failure.code)
-    ) {
-      return true;
-    }
-  }
-
-  if (item.message.error) {
-    const errText = item.message.error.message || item.message.error.code || "";
-    if (NETWORK_OR_WAITING_PATTERN.test(errText)) return true;
-  }
-
   const subItems = item.delegate?.items ?? [];
-  for (let i = subItems.length - 1; i >= 0; i--) {
-    const sub = subItems[i];
-    if (sub.message.error) {
-      const errText = sub.message.error.message || sub.message.error.code || "";
-      if (NETWORK_OR_WAITING_PATTERN.test(errText)) return true;
-    }
-    if (sub.kind === "tool") {
-      const payload = toolResultPayload(sub.message);
-      if (typeof payload === "string" && NETWORK_OR_WAITING_PATTERN.test(payload)) {
+  if (subItems.length === 0) {
+    const failure = failures.get(delegationId);
+    if (failure) {
+      if (
+        NETWORK_OR_WAITING_PATTERN.test(failure.message) ||
+        NETWORK_OR_WAITING_PATTERN.test(failure.code)
+      ) {
         return true;
       }
-      if (payload && typeof payload === "object") {
-        const err = (payload as { error?: unknown }).error;
-        if (typeof err === "string" && NETWORK_OR_WAITING_PATTERN.test(err)) {
-          return true;
-        }
+    }
+    if (item.message.error) {
+      const errText = item.message.error.message || item.message.error.code || "";
+      if (NETWORK_OR_WAITING_PATTERN.test(errText)) return true;
+    }
+    return false;
+  }
+
+  // Look ONLY at the latest activity in the subagent's execution so recovery is immediate
+  const last = subItems[subItems.length - 1];
+
+  // If the latest activity is thinking or text generation, it has recovered and is working
+  if (last.kind === "thinking" || last.kind === "answer") {
+    return false;
+  }
+
+  // If the latest activity is a tool:
+  if (last.kind === "tool") {
+    // If the tool is actively executing (toolStatus === 'running'), it is actively working, not waiting!
+    if (last.message.toolStatus === "running") {
+      return false;
+    }
+
+    // Only if the latest tool completed with a network or rate-limit error is it actively waiting for retry
+    if (last.message.error) {
+      const errText = last.message.error.message || last.message.error.code || "";
+      if (NETWORK_OR_WAITING_PATTERN.test(errText)) return true;
+    }
+
+    const payload = toolResultPayload(last.message);
+    if (typeof payload === "string" && NETWORK_OR_WAITING_PATTERN.test(payload)) {
+      return true;
+    }
+    if (payload && typeof payload === "object") {
+      const err = (payload as { error?: unknown }).error;
+      if (typeof err === "string" && NETWORK_OR_WAITING_PATTERN.test(err)) {
+        return true;
       }
     }
   }
@@ -511,6 +536,7 @@ function handleAbort(event: MouseEvent) {
     tag="div"
     name="capsule-slide"
     class="agent-status-bar no-drag"
+    :class="{ 'has-plan-capsule': hasPlanCapsule }"
   >
     <div
       v-for="sub in activeSubagents"

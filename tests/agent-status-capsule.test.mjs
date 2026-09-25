@@ -356,3 +356,56 @@ test("extractSubagentTaskName prioritizes description over task and cleans multi
   assert.equal(extractSubagentTaskName(msgSubagents), "运行校验链并汇报失败");
 });
 
+test("agent status bar offsets downward when PlanStatusCapsule is present to avoid overlapping", async () => {
+  const { readFileSync } = await import("node:fs");
+  const capsuleContent = readFileSync(
+    join(here, "../src/renderer/components/AgentStatusCapsule.vue"),
+    "utf-8",
+  );
+  const chromeCss = readFileSync(
+    join(here, "../src/renderer/styles/chrome.css"),
+    "utf-8",
+  );
+
+  // AgentStatusCapsule computes hasPlanCapsule and binds class
+  assert.ok(
+    capsuleContent.includes("hasPlanCapsule = computed"),
+    "AgentStatusCapsule must compute hasPlanCapsule",
+  );
+  assert.ok(
+    capsuleContent.includes("'has-plan-capsule': hasPlanCapsule"),
+    "AgentStatusCapsule must bind has-plan-capsule class",
+  );
+
+  // chrome.css defines offset for has-plan-capsule
+  assert.match(
+    chromeCss,
+    /\.agent-status-bar\.has-plan-capsule\s*\{[^}]*top:\s*calc\(var\(--ds-toolbar-height\)\s*\+\s*12px\s*\+\s*38px\)/,
+    "chrome.css must offset agent-status-bar top by 38px when has-plan-capsule",
+  );
+});
+
+test("AgentStatusCapsule scans all session activity items and recovers subagent from waiting", async () => {
+  const { readFileSync } = await import("node:fs");
+  const capsuleContent = readFileSync(
+    join(here, "../src/renderer/components/AgentStatusCapsule.vue"),
+    "utf-8",
+  );
+
+  // Scans all turns across session so concurrent subagents across turns are not dropped
+  assert.ok(
+    capsuleContent.includes("allSessionActivityItems"),
+    "AgentStatusCapsule must scan all session activity items to capture all subagents",
+  );
+
+  // Checks only the latest activity so subagent recovers from transient waiting
+  assert.ok(
+    capsuleContent.includes("const last = subItems[subItems.length - 1]"),
+    "isNetworkOrWaiting must check only the latest subagent activity item",
+  );
+  assert.ok(
+    capsuleContent.includes('last.message.toolStatus === "running"'),
+    "Active running tools must not be considered waiting",
+  );
+});
+

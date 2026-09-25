@@ -1,4 +1,5 @@
 import type {
+  ContextBreakdownItem,
   ContextCompactionMark,
   MessageUsage,
   ModelInfo,
@@ -25,6 +26,7 @@ export type LatestTurnContextInspector = {
   responseOutputTokens?: number;
   responseOutputEstimated: boolean;
   systemPromptTokens?: number;
+  contextBreakdown?: ContextBreakdownItem[];
 };
 
 /**
@@ -79,5 +81,6 @@ export function latestTurnContextInspector(
     systemPromptTokens:
       latestUsageMessage?.systemPromptTokens ??
       (latestTurn ? 350 : undefined),
+    contextBreakdown: latestUsageMessage?.contextBreakdown,
   };
 }

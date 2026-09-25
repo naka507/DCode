@@ -13,7 +13,7 @@
 
 ## Status
 
-- **Current release line:** `1.0.x` (Active stable release: `1.0.4`)
+- **Current release line:** `1.0.x` (Active stable release: `1.0.5`)
 - **License:** Apache License 2.0
 
 ---
@@ -60,7 +60,7 @@ DCode adheres to a strictly defined multi-process architecture with clean owners
 - **Plan Mode Closed-Loop & Capsule Popover**: Renders a floating plan status capsule in the top-right of the transcript during plan execution with phase names and pulse animations; clicking expands an inline detail popover showing checklist items, progress bars, artifact document links, and report copying without disturbing the main workspace.
 - **Plugin DevKit & Extensibility**: First-class plugin SDK and CLI (`pi-plugin`) supporting custom webview panels, tool contributions, commands, and skills.
 - **Safe Managed Mode & Containment**: First-class `auto` mode that restricts agent operations strictly to project folders, `.dcode` state and memory directories, and historically granted paths. Within bounds, the model can read, write, and delete files autonomously without dialogs; out-of-scope calls are immediately denied without interrupting the task loop.
-- **Context Capacity & Reasoning Inspector**: Real-time context capacity ring and multi-segment breakdown in the composer toolbar. Accurately extracts reasoning/thought tokens (e.g. DeepSeek R1, Claude 3.7 Sonnet, OpenAI o-series) from standard conversation text, displaying system prompts, tools, reasoning, and messages with precision token calculations and cache hit rates.
+- **Context Capacity & Reasoning Inspector**: Real-time context capacity ring and multi-segment breakdown in the composer toolbar backed entirely by the Agent Runtime backend. Physical schema and prompt character measurement guarantees strict token conservation without rounding drift, provides true visibility for Skills and MCP tool schemas, extracts reasoning/thought tokens (e.g. DeepSeek R1, Claude 3.7 Sonnet, OpenAI o-series), and stabilizes occupancy against cache hit/miss fluctuations.
 - **Silent Microcompact Policy**: Intelligent trimming for historical tool results. Retains the latest tool call outputs while silently replacing older bulky outputs (`ReadFile`, `Bash`, `Grep`, `Glob`) with lightweight placeholders, slashing 50%~80% context tokens locally without requiring an expensive LLM summarization roundtrip.
 - **Plan & Goal Workflow Stage Stepper**: Automatically parses multi-stage execution phases and step checklists from Markdown plans within the approval bar, rendering an interactive pipeline stepper (completed, in-progress, pending) and progress meter.
 - **Modern UI Design System & Typography**: Standardized `--text-ui-*` semantic type ramp and optimized CJK font stack (Microsoft YaHei UI, PingFang SC, Noto Sans CJK) for monospace code and terminal blocks across platforms, eliminating jagged glyphs on Windows.

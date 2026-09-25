@@ -25,6 +25,17 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "1.0.5",
+    date: "2026-09-25",
+    highlights: [
+      "Backend context capacity breakdown: transitioned context breakdown and token occupancy calculation from frontend heuristics to Agent Runtime sidecar.",
+      "Exact token conservation & allocation: character-proportional token allocation guarantees that prompt, skills, tools, messages, and reasoning sum exactly to total request occupancy.",
+      "Eliminated capacity shrinkage & token swings: stabilized context occupancy against provider cache hits/misses and nested reasoning tokens, ensuring monotonicity until compaction.",
+      "Physical schema & prompt measurement for Skills and MCP: measures active plugin skill instructions and external MCP tool schemas directly to reflect their true token footprints.",
+      "Reliable reasoning token extraction: accurately extracts provider reasoning tokens and falls back to thinking stream estimation, preventing reasoning rows from vanishing or zeroing out.",
+    ],
+  },
+  {
     version: "1.0.4",
     date: "2026-09-25",
     highlights: [
@@ -85,6 +96,17 @@ const enEntries: ChangelogEntry[] = [
 ];
 
 const zhCNEntries: ChangelogEntry[] = [
+  {
+    version: "1.0.5",
+    date: "2026-09-25",
+    highlights: [
+      "上下文容量统计彻底后端化：业务计算逻辑完全从前端 Vue 启发式猜测转移至后端 Agent Runtime (Node.js Sidecar)，杜绝业务残留。",
+      "严格 Token 物理守恒与按比例分配：系统提示词、技能、系统工具、MCP 工具、消息历史与思考推理总和严格等于请求总占用，消除数据漂移。",
+      "消除容量意外缩水与剧烈波动：重构底层占用计算公式，消除缓存命中与思考 Token 重复累加导致的容量忽大忽小与缓存失效骤降问题。",
+      "技能 (Skills) 与 MCP 工具物理级真实呈现：基于物理 Schema 与提示词字符精准度量，真实展示技能目录与第三方 MCP 工具的上下文占比。",
+      "思考推理 (Reasoning) 精准度量与保底：深度提取厂商推理 Token 并结合实时流式字符估算，杜绝思考数据归零或被隐藏。",
+    ],
+  },
   {
     version: "1.0.4",
     date: "2026-09-25",

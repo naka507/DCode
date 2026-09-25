@@ -41,6 +41,7 @@ import { computed, onUnmounted, ref, useId, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   formatCompactTokenCount,
+  type ContextBreakdownItem,
   type MessageUsage,
   type UiMessage,
 } from "@dcode/shared";
@@ -75,12 +76,14 @@ const props = withDefaults(
     responseOutputTokens?: number;
     responseOutputEstimated?: boolean;
     systemPromptTokens?: number;
+    contextBreakdown?: ContextBreakdownItem[];
   }>(),
   {
     responseDurationMs: undefined,
     responseOutputTokens: undefined,
     responseOutputEstimated: false,
     systemPromptTokens: undefined,
+    contextBreakdown: undefined,
   },
 );
 
@@ -88,18 +91,22 @@ const { t, locale } = useI18n();
 
 const panelId = useId();
 
-const breakdown = computed(() =>
-  calculateContextBreakdown({
+const breakdown = computed(() => {
+  if (props.contextBreakdown && props.contextBreakdown.length > 0) {
+    return props.contextBreakdown;
+  }
+  return calculateContextBreakdown({
     usage: props.usage,
     tools: props.tools,
     systemPromptTokens: props.systemPromptTokens,
-  }),
-);
+  });
+});
 
 const visibleBreakdown = computed(() =>
   breakdown.value.filter(
     (item) =>
       item.tokens > 0 ||
+      (item.chars !== undefined && item.chars > 0) ||
       item.key === "messages" ||
       item.key === "systemPrompt",
   ),
