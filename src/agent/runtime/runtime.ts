@@ -3034,7 +3034,7 @@ Delegation rules:
           failureKey !== undefined &&
           typeof result.errorCode === "string" &&
           RECOVERABLE_MUTATION_ERROR_CODES.has(result.errorCode)
-            ? `${failureKey} ${result.errorCode}`
+            ? `${failureKey}\u0000${result.errorCode}`
             : undefined;
         const grantedRecoveryGrace =
           graceKey !== undefined && !this.mutationRecoveryGraces.has(graceKey);
@@ -3064,7 +3064,7 @@ Delegation rules:
           if (succeededKey !== undefined) {
             this.mutationFailureCounts.delete(succeededKey);
             for (const key of this.mutationRecoveryGraces) {
-              if (key.startsWith(`${succeededKey} `)) {
+              if (key.startsWith(`${succeededKey}\u0000`)) {
                 this.mutationRecoveryGraces.delete(key);
               }
             }

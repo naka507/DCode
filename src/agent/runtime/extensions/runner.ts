@@ -591,7 +591,7 @@ export class TrustedExtensionRunner {
     member?: string,
     stack?: string,
   ): void {
-    const key = `${extensionId} ${kind} ${member ?? ""}`;
+    const key = `${extensionId}\u0000${kind}\u0000${member ?? ""}`;
     const existing = this.diagnostics.get(key);
     if (existing) {
       existing.count += 1;
