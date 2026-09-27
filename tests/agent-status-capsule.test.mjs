@@ -34,6 +34,25 @@ test("localizeAgentName maps Chinese identifiers to English names", () => {
   assert.equal(localizeAgentName("设计", false), "Design");
 });
 
+test("delegateAgentName falls back to the resolved name when a resume omits `agent`", () => {
+  const resumed = {
+    id: "task-2",
+    role: "tool",
+    content: "",
+    createdAt: "2026-09-27T00:00:00.000Z",
+    toolName: "Task",
+    toolArgs: { task: "Now cover the lexer.", resume: "del-1" },
+    toolResult: { details: { delegationId: "del-2", agent: "researcher" } },
+  };
+  assert.equal(delegateAgentName(resumed), "researcher");
+  assert.equal(
+    delegateAgentName({ ...resumed, toolArgs: { agent: "coder", task: "x" } }),
+    "coder",
+  );
+  assert.equal(delegateAgentName(resumed, { agentName: "tester" }), "tester");
+  assert.equal(delegateAgentName({ ...resumed, toolResult: undefined }), "");
+});
+
 test("tool action categorization identifies run, read, write, thinking correctly", () => {
   assert.equal(getToolAction("bash"), "run");
   assert.equal(getToolAction("runCommand"), "run");

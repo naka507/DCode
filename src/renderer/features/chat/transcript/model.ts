@@ -19,7 +19,13 @@ export function delegateAgentName(
   const args = message.toolArgs;
   if (args && typeof args === "object" && !Array.isArray(args)) {
     const requested = (args as { agent?: unknown }).agent;
-    if (typeof requested === "string") return requested;
+    if (typeof requested === "string" && requested) return requested;
+  }
+  // A resume may omit `agent`; the runtime records the resolved name.
+  const details = toolResultPayload(message);
+  if (details && typeof details === "object" && !Array.isArray(details)) {
+    const resolved = (details as { agent?: unknown }).agent;
+    if (typeof resolved === "string") return resolved;
   }
   return "";
 }

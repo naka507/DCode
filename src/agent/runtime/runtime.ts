@@ -3923,13 +3923,15 @@ Delegation rules:
             ]),
         "`task` is the delegate's only instruction. It cannot see this conversation, and you cannot correct it while it runs, so state the goal, the paths and facts it cannot infer, and exactly what to report back.",
         "To run delegates concurrently, emit several Task calls in one assistant message. A message that mixes Task with any other tool runs one call at a time. You may keep working or talk to the user while they run; the runtime delivers their reports when they finish. Call TaskStop only to cancel.",
-        "To continue a previous subagent, pass its `resume` id (the `delegationId` returned by Task). Saying \"reuse\" in prose is not enough. Do not pass `model` when resuming; start a new delegation to change models.",
+        "To continue a previous subagent, pass its `resume` id (the `delegationId` returned by Task); `agent` may then be omitted, because the delegation already names its subagent. Saying \"reuse\" in prose is not enough. Do not pass `model` when resuming; start a new delegation to change models.",
         `Available subagents:\n${catalog}`,
       ].join("\n\n"),
       parameters: Type.Object({
-        agent: Type.String({
-          description: `Name of the subagent to run: ${names.join(", ")}.`,
-        }),
+        agent: Type.Optional(
+          Type.String({
+            description: `Name of the subagent to run: ${names.join(", ")}. Required for a new delegation; optional with \`resume\`.`,
+          }),
+        ),
         task: Type.String({
           description:
             "The complete brief: goal, context the delegate cannot infer, and the exact report you want back.",
@@ -3957,7 +3959,31 @@ Delegation rules:
       // here so the intent survives a tool built outside that path.
       executionMode: "parallel",
       execute: async (toolCallId, params) => {
-        const requested = isRecord(params) ? String(params.agent ?? "") : "";
+        const resume =
+          isRecord(params) && typeof params.resume === "string"
+            ? params.resume.trim()
+            : "";
+        const named = isRecord(params) ? String(params.agent ?? "") : "";
+        // A delegation already names its subagent, so a resume may omit
+        // `agent`. A given name is still checked against the chain by
+        // `resolveResumeChain`.
+        let requested = named;
+        if (!named.trim() && resume) {
+          const chain = this.delegationChains.lookup(resume);
+          if (!chain) {
+            return this.subagentToolError(
+              toolCallId,
+              this.unknownResumeMessage(resume),
+            );
+          }
+          requested = chain.agentName;
+        }
+        if (!requested.trim()) {
+          return this.subagentToolError(
+            toolCallId,
+            `A new delegation needs \`agent\`. Available: ${names.join(", ")}.`,
+          );
+        }
         const definition = this.subagents.find(
           (candidate) => subagentNameMatches(candidate.name, requested),
         );
@@ -3970,10 +3996,6 @@ Delegation rules:
         const task =
           isRecord(params) && typeof params.task === "string"
             ? params.task.trim()
-            : "";
-        const resume =
-          isRecord(params) && typeof params.resume === "string"
-            ? params.resume.trim()
             : "";
         // Model override: Task.model > definition.model pin > session model.
         const modelOverride =

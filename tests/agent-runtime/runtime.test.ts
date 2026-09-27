@@ -7424,6 +7424,69 @@ describe("DesktopAgentRuntime subagents", () => {
       await runtime.dispose();
     });
 
+    it("resumes without `agent` by using the chain's own subagent", async () => {
+      const runtime = createRuntime({
+        subagents: [explorer],
+        history: [delegateRow("child-1", "task-1")],
+      });
+      (runtime as any).transcriptHistory.push({
+        id: "task-1",
+        role: "tool",
+        content: "",
+        createdAt: "2026-08-06T00:00:00.000Z",
+        toolCallId: "task-1",
+        toolName: "Task",
+        toolArgs: { agent: "explorer", task: "Explore the parser." },
+        toolResult: { details: { delegationId: "del-1", agent: "explorer" } },
+        toolStatus: "success",
+      });
+      (runtime as any).delegationChains.hydrate(
+        (await import("../../src/agent/runtime/delegation-history.js")).rebuildChainsFromTranscript(
+          (runtime as any).transcriptHistory,
+        ),
+      );
+      expect(taskTool(runtime).parameters.required).not.toContain("agent");
+
+      subagentRuns.calls.length = 0;
+      subagentRuns.deferred = true;
+      const started = await startTask(runtime, "task-2", {
+        task: "Now cover the lexer.",
+        resume: "del-1",
+      });
+      subagentRuns.deferred = false;
+
+      expect((started.details as any).error).toBeUndefined();
+      expect((started.details as any).resumedFrom).toBe("del-1");
+      expect((started.details as any).agent).toBe("explorer");
+      expect(subagentRuns.calls).toHaveLength(1);
+      expect(subagentRuns.calls[0].definition.name).toBe("explorer");
+      subagentRuns.resolveRun?.({
+        agentName: "explorer",
+        status: "completed",
+        report: "done",
+        turns: 1,
+        toolCalls: 0,
+      });
+      await runtime.dispose();
+    });
+
+    it("still requires `agent` for a new delegation or an unknown resume id", async () => {
+      const runtime = createRuntime({ subagents: [explorer] });
+      subagentRuns.calls.length = 0;
+
+      const fresh = await startTask(runtime, "task-1", { task: "Find it." });
+      expect(String((fresh.details as any).error)).toContain(
+        "A new delegation needs `agent`",
+      );
+      const unknown = await startTask(runtime, "task-2", {
+        task: "Continue.",
+        resume: "missing",
+      });
+      expect(String((unknown.details as any).error)).toContain("Unknown delegation");
+      expect(subagentRuns.calls).toHaveLength(0);
+      await runtime.dispose();
+    });
+
     it("refuses to resume a running delegation", async () => {
       const runtime = createRuntime({ subagents: [explorer] });
       subagentRuns.calls.length = 0;
