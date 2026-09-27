@@ -49,6 +49,7 @@ import {
   usageFromPi,
 } from "./agent-messages.js";
 import type { RuntimeProviderConfig } from "./provider-binding.js";
+import { applyMicrocompact } from "./microcompact.js";
 import { clampThinkingLevel } from "./thinking-level.js";
 import { subagentModelBinding, type SubagentProviderRetryState } from "./subagent-model-binding.js";
 import {
@@ -221,6 +222,13 @@ export class SubagentRun {
       streamFn: binding.streamFn,
       getApiKey: binding.getApiKey,
       convertToLlm,
+      // A delegate runs a long tool loop and never checkpoints, so every file
+      // read and command log it produced used to ride along in each request
+      // until the run ended. Clear bulky old tool results with the same policy
+      // as the parent's context projection. Only the outgoing request is
+      // trimmed: the agent state and the transcript rows it emits keep every
+      // message intact.
+      transformContext: async (messages) => applyMicrocompact(messages),
       afterToolCall: async (context) => this.afterToolCall(context),
       initialState: {
         systemPrompt: opts.systemPrompt,
