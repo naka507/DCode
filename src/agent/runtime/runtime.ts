@@ -179,6 +179,7 @@ import {
   openCodeEndpointFromProvider,
   withOpenCodeSessionHeaders,
 } from "./opencode-session-headers.js";
+import { withDcodeFileOps } from "./compaction-file-ops.js";
 import { withCompactionRequestHeaders } from "./compaction-request.js";
 import {
   COMPACTION_SUMMARY_RETRY_POLICY,
@@ -5818,6 +5819,10 @@ Delegation rules:
       turnPrefixMessages: [],
       isSplitTurn: false,
       retainedTail: selectRetainedUserMessages(candidates, retainedUserTokens),
+      // pi only saw its own lowercase tool names and never the retained tail;
+      // the whole range is summarized now, so attribute DCode's file tools
+      // across all of it.
+      fileOps: withDcodeFileOps(preparation.fileOps, messagesToSummarize),
     };
   }
 

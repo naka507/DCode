@@ -5152,6 +5152,62 @@ describe("DesktopAgentRuntime per-turn context protection", () => {
     await runtime.dispose();
   });
 
+  it("records the files DCode's own tools touched on the checkpoint", async () => {
+    const host = { call: vi.fn().mockResolvedValue(undefined) };
+    const createdAt = "2026-07-28T00:00:00Z";
+    const tool = (id: string, toolName: string, path: string): UiMessage => ({
+      id,
+      role: "tool",
+      content: "",
+      createdAt,
+      status: "complete",
+      toolName,
+      toolCallId: `call-${id}`,
+      toolStatus: "success",
+      toolArgs: { path },
+      toolResult: { content: [{ type: "text", text: "ok" }] },
+    });
+    const runtime = createRuntime({
+      host,
+      history: [
+        { id: "u1", role: "user", content: "fix the form", createdAt, status: "complete" },
+        { id: "a1", role: "assistant", content: "", createdAt, status: "complete" },
+        tool("t1", "Read", "src/form.ts"),
+        tool("t2", "Edit", "src/form.ts"),
+        tool("t3", "Write", "src/form.test.ts"),
+        tool("t4", "Read", "README.md"),
+        { id: "a2", role: "assistant", content: "Done.", createdAt, status: "complete" },
+        { id: "u2", role: "user", content: "continue the task", createdAt, status: "complete" },
+      ],
+    });
+    const generateCompaction = vi
+      .spyOn(runtime as any, "generateCompaction")
+      .mockResolvedValue({
+        ok: false,
+        error: { code: "summarization_failed", message: "provider terminated" },
+      });
+
+    await expect((runtime as any).runCompaction("threshold", false)).resolves.toBe(
+      true,
+    );
+
+    // pi turns these sets into the summary's file list and its details.
+    const summarized = generateCompaction.mock.calls[0]?.[0] as any;
+    expect([...summarized.fileOps.read].sort()).toEqual(["README.md", "src/form.ts"]);
+    expect([...summarized.fileOps.edited]).toEqual(["src/form.ts"]);
+    expect([...summarized.fileOps.written]).toEqual(["src/form.test.ts"]);
+    const checkpoint = (host.call.mock.calls.find(
+      ([method]) => method === "session.appendCompaction",
+    )?.[1] as any)?.compaction;
+    expect(checkpoint?.details).toEqual(
+      expect.objectContaining({
+        readFiles: ["README.md", "src/form.ts"],
+        modifiedFiles: ["src/form.test.ts", "src/form.ts"],
+      }),
+    );
+    await runtime.dispose();
+  });
+
   it("shrinks a terminal checkpoint tail when a new prompt leaves no history to summarize", async () => {
     const host = { call: vi.fn().mockResolvedValue(undefined) };
     const runtime = createRuntime({
