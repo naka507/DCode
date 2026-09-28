@@ -236,6 +236,14 @@ export function buildProviderModel(
           ...(catalogModel.compat ?? {}),
           ...(zhipuCompat ?? {}),
           ...(deepseekCompat ?? {}),
+          // A custom DeepSeek-compatible Chat gateway is stored under a UUID,
+          // so pi-ai cannot detect its thinking protocol from provider name.
+          // Keep explicit catalog mappings and named aggregator formats intact.
+          ...(provider.vendorKey === "openai_compatible" && deepseekCompat &&
+              catalogModel.reasoning && !catalogModel.compat?.thinkingFormat &&
+              catalogModel.thinkingLevelMap?.off === undefined
+            ? { thinkingFormat: "deepseek" }
+            : {}),
           supportsDeveloperRole: catalogModel.compat?.supportsDeveloperRole === true,
         }
       : catalogModel.compat;

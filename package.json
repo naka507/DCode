@@ -1,7 +1,7 @@
 {
   "name": "dcode",
   "description": "DCode — desktop workspace for AI coding agents (Electron shell + Vue 3 renderer)",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
@@ -32,6 +32,7 @@
     "clean": "node -e \"fs.rmSync('out',{recursive:true,force:true});fs.rmSync('release',{recursive:true,force:true});fs.rmSync('resources/runtime',{recursive:true,force:true})\"",
     "test:e2e": "node scripts/e2e-smoke.mjs",
     "test:e2e:rpc-unicode": "node scripts/e2e-rpc-unicode.mjs",
+    "test:e2e:prompt-read-grants": "node scripts/e2e-prompt-read-grants.mjs",
     "test:e2e:plan": "node scripts/e2e-plan.mjs",
     "test:e2e:plan-ui": "node scripts/e2e-plan-ui.mjs",
     "test:e2e:theme-surfaces": "node scripts/e2e-theme-surfaces.mjs",

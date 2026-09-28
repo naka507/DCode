@@ -6945,6 +6945,49 @@ describe("DesktopAgentRuntime subagents", () => {
     await runtime.dispose();
   });
 
+  it.each([undefined, 3600])("keeps a long TaskWait pending until the 1800-second bound (%s)", async (timeoutSeconds) => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    const runtime = createRuntime({ subagents: [explorer] });
+    subagentRuns.instances.length = 0;
+    subagentRuns.deferred = true;
+    try {
+      const started = await taskTool(runtime).execute("long-task", { agent: "explorer", task: "Work." });
+      const wait = runtime["agent"].state.tools.find((entry) => entry.name === "TaskWait")!;
+      let settled = false;
+      const pending = wait.execute("long-wait", {
+        delegationIds: [(started.details as { delegationId: string }).delegationId],
+        ...(timeoutSeconds === undefined ? {} : { timeoutSeconds }),
+      }).then((result) => { settled = true; return result; });
+      await vi.advanceTimersByTimeAsync(1_799_000);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect((await pending).details).toMatchObject({ status: "timeout", delegations: [{ status: "running" }] });
+    } finally {
+      subagentRuns.deferred = false;
+      await runtime.dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it("aborts a long TaskWait promptly without cancelling its delegate", async () => {
+    const runtime = createRuntime({ subagents: [explorer] });
+    subagentRuns.instances.length = 0;
+    subagentRuns.deferred = true;
+    try {
+      const started = await taskTool(runtime).execute("long-task", { agent: "explorer", task: "Work." });
+      const wait = runtime["agent"].state.tools.find((entry) => entry.name === "TaskWait")!;
+      const controller = new AbortController();
+      const pending = wait.execute("long-wait", {
+        delegationIds: [(started.details as { delegationId: string }).delegationId],
+      }, controller.signal);
+      controller.abort();
+      expect((await pending).details).toMatchObject({ status: "timeout", delegations: [{ status: "running" }] });
+    } finally {
+      subagentRuns.deferred = false;
+      await runtime.dispose();
+    }
+  });
+
   it("defaults TaskWait to mode 'any' to converge on the first completed subagent", async () => {
     const runtime = createRuntime({ subagents: [explorer] });
     subagentRuns.calls.length = 0;

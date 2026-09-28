@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Policy-Sync: 2026-09-24.3
+Policy-Sync: 2026-09-28.1
 
 Instructions for Claude Code CLI and Claude Cowork on dcode.
 
@@ -40,7 +40,7 @@ Every request uses:
 1 request = 1 branch + 1 dedicated worktree
 ```
 
-- Never develop on `main` or in the primary checkout. This repository's default branch on `origin` is `master`; where the policy says `main`, read "the repository's default branch".
+- Never develop on `main` or in the primary checkout. This repository's default branch on `origin` is `main`.
 - Never merge unvalidated task code into local `main`.
 - Never reuse, modify, or delete another agent's branch or worktree.
 - Never discard unrelated work in the primary checkout.

@@ -385,7 +385,7 @@ export function createSidecarRuntime({
         sessionId: String(params.sessionId ?? ""),
         content: String(params.content ?? ""),
         ...(typeof params.idempotencyKey === "string" ? { idempotencyKey: params.idempotencyKey } : {}),
-      });
+      }, "extension");
     },
     queuePrioritize: async (params) => {
       if (!runtimeState.agentHostBridge) throw new Error("agent host unavailable");

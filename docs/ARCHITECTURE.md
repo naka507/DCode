@@ -1,6 +1,6 @@
 # dcode architecture
 
-`dcode` is a shipped desktop agent application, version `1.0.0`
+`dcode` is a shipped desktop agent application, version `1.0.7`
 (`package.json`, agreed by `APP_VERSION` in `src/shared/protocol.ts`).
 
 This document records the parts of the architecture that are not recoverable
@@ -79,7 +79,50 @@ Mandatory boundaries:
 * Electron Main must remain a thin orchestrator.
 * `src/shared/` must not depend on main-process implementation code.
 * Plugin permission and sandbox boundaries must not be bypassed.
-* Safe Managed Mode (`auto`) strictly bounds tool execution to authorized project roots, the `.dcode` directory, and historically granted paths. Out-of-scope calls are immediately hard-denied (`Deny`) without prompting, allowing the agent turn to continue uninterrupted.
+* Safe Managed Mode (`auto`) bounds native file tools to authorized project roots, the `.dcode` directory, and granted paths. Out-of-scope file calls are denied without prompting. Bash is a command runner, not an OS filesystem sandbox; its workspace CWD does not prevent commands from reading absolute external paths.
+
+### User prompt read grants (2026-09-28)
+
+Users can name external reference files without granting write access. The
+trusted desktop and headless prompt/steering entry points submit only original
+user text to `permissions.grantPromptReadPaths`. Slash expansions, attachments,
+replayed session messages, extension-injected queue input, model output and transcript persistence do not create
+grants. The method is deliberately absent from the sidecar host proxy allowlist.
+
+Each grant names the expected running turn, checked under the host state lock.
+Steering revalidates its target after preparation. Extension queue entries retain
+an `extension` principal through persistence and carry a narrowing-only
+`suppressPromptReadGrants` marker at the desktop IPC boundary.
+
+DCore accepts existing absolute path literals (quote paths containing spaces),
+canonicalizes them, and stores file/directory scope in host memory per session.
+It grants only Read/Grep/Glob in auto mode. Files do not authorize siblings;
+directories authorize canonical descendants. Root-wide grants, relative paths,
+parent traversal and missing paths are ignored. Canonical target checks prevent
+symlink paths from expanding a grant. Clearing session grants or restarting the
+host revokes them; a new session does not inherit them. Write/Edit and Bash
+receive no authority from this mechanism. Existing ask-mode approval remains.
+
+Alternatives were documentation alone or command parsing as a sandbox. The
+chosen read grant reduces legitimate reference-reading friction while retaining
+the write boundary; it does not claim to sandbox arbitrary shell commands. An
+older host's method-not-found response keeps its original permission behavior.
+
+### Long delegation recovery and waiting (2026-09-28)
+
+Subagent setup and stream failures share bounded retry budgets for each provider
+request. A successfully completed response replenishes both budgets so isolated
+errors over hours do not accumulate into an artificial failure. Continuous
+failures still exhaust the limits; completed tool work is retained on retry.
+TaskWait defaults to 1800 seconds and `any`, returning immediately when the
+required result count settles; `all` keeps its explicit barrier semantics.
+
+Custom `openai_compatible` DeepSeek-family reasoning models without an explicit
+off mapping or thinking format use the DeepSeek thinking wire format. `off`
+sends `thinking: {type: "disabled"}`, while `omit` sends neither thinking nor
+reasoning effort. Named aggregators and explicit metadata keep their formats.
+Wire-level tests establish request construction, not a gateway's compliance;
+actual reasoning-token reduction requires production measurement.
 
 Changing a frozen architecture, public interface, data ownership model, or
 security boundary requires a recorded decision. This repository keeps no
@@ -433,6 +476,12 @@ to drift away from the logo it was supposed to mirror.
 ## Development verification
 
 ### Quality gate command list
+
+Set `DCODE_DCORE_DIR` to the native candidate checkout for cross-repository
+checks and release preflight, and `DCODE_HOST_BIN` to its compiled binary for
+protocol E2E. DCode and DCore have independent versions; the release gate checks
+each component's own version surfaces. Packaging records and verifies the
+native binary hash rather than inferring compatibility from version equality.
 
 ```bash
 npm run typecheck

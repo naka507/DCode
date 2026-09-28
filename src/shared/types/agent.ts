@@ -11,6 +11,8 @@ import type { RacpPermissionMode } from "../racp.js";
 export type AgentPromptRequest = {
   sessionId: string;
   content: string;
+  /** Trusted bridge marks automated input; this can only narrow permissions. */
+  suppressPromptReadGrants?: boolean;
   /** Host-owned collaboration delivery; its durable record supplies the input. */
   sessionMessageId?: string;
   /** Attachments are resolved by Electron main and never trusted by the sidecar. */
@@ -68,7 +70,7 @@ export type AgentPromptAttachment = {
 
 export type AgentSteerRequest = Pick<
   AgentPromptRequest,
-  "sessionId" | "content" | "attachments" | "messageId"
+  "sessionId" | "content" | "attachments" | "messageId" | "suppressPromptReadGrants"
 > & {
   expectedTurnId: string;
 };

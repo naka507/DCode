@@ -592,6 +592,14 @@ export class SubagentRun {
             };
           }
         }
+        // A delegation can span hours and hundreds of successful requests.
+        // Bound consecutive failures of one request, not isolated failures
+        // across all of its completed work. Setup and stream retries still
+        // share the same budget until a response completes successfully.
+        if (!failed && stopReason !== "aborted") {
+          this.providerTransientRetryAttempt = 0;
+          this.providerRateLimitRetryAttempt = 0;
+        }
         const messageUsage = usageFromPi(message.usage);
         this.usage = addUsage(this.usage, messageUsage);
         // The report is the last assistant text; a call-only turn has none and

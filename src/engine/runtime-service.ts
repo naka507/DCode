@@ -13,6 +13,7 @@ import {
 import type { LaunchResolver } from "./launch-resolver.js";
 import { resolveSessionMessageInput } from "./session-message-input.js";
 import { TurnEventPipeline } from "./turn-events.js";
+import { grantPromptReadPaths } from "./prompt-read-grants.js";
 
 /** host-core as the turn lifecycle drives it. `HostProcess` satisfies it. */
 export type RuntimeHostLink = {
@@ -337,6 +338,7 @@ export class RuntimeService implements RuntimePort {
     };
     try {
       await host.call("session.appendMessage", { sessionId, message: userMessage, turnId });
+      if (!sessionMessage && request.principal.subject !== "extension") await grantPromptReadPaths(host, sessionId, request.content, turnId);
     } catch (error) {
       await this.finishTurn(sessionId, "error", errorCodeOf(error), { turnId });
       // A turn whose user message could not be appended must not be started:
@@ -397,6 +399,8 @@ export class RuntimeService implements RuntimePort {
         createdAt: new Date(this.now()).toISOString(),
         steering: true,
       };
+      if (!this.isTurnDispatchable(sessionId, request.turnId)) return { accepted: false };
+      if (!request.sessionMessageId && request.principal.subject !== "extension") await grantPromptReadPaths(host, sessionId, request.content, request.turnId);
       const result = await sidecar.call<{ accepted?: boolean }>("agent.steer", {
         sessionId,
         expectedTurnId: request.turnId,

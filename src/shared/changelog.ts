@@ -25,6 +25,16 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "1.0.7",
+    date: "2026-09-28",
+    highlights: [
+      "Custom DeepSeek-compatible gateways receive explicit thinking settings, including disabling thinking when off is selected; explicit provider mappings are preserved.",
+      "Long subagent tasks recover from isolated provider errors without accumulating retry failures across successful requests or replaying completed tools.",
+      "TaskWait now waits up to 30 minutes by default and recommends processing results as each subagent finishes; cancellation remains immediate.",
+      "Absolute reference paths in user messages grant session-scoped read access in managed mode. Writes stay restricted, automated messages cannot create grants, and revoke or host restart clears the grants.",
+    ],
+  },
+  {
     version: "1.0.6",
     date: "2026-09-28",
     highlights: [
@@ -106,6 +116,16 @@ const enEntries: ChangelogEntry[] = [
 ];
 
 const zhCNEntries: ChangelogEntry[] = [
+  {
+    version: "1.0.7",
+    date: "2026-09-28",
+    highlights: [
+      "自定义 DeepSeek 兼容网关现在会收到明确的思考参数，选择关闭时会下发禁用思考；保留服务商已有的显式参数映射。",
+      "长时间子智能体任务可从偶发服务商错误中恢复，成功请求会重置重试计数，已完成的工具操作不会重复执行。",
+      "TaskWait 默认最多等待 30 分钟，并引导逐个处理子智能体结果；取消仍会立即生效。",
+      "安全托管模式下，用户消息中的绝对参考路径可获得当前会话的只读授权；写入仍受限制，自动注入消息不能新增授权，撤销或宿主重启会清除授权。",
+    ],
+  },
   {
     version: "1.0.6",
     date: "2026-09-28",
