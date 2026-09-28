@@ -13,7 +13,7 @@
 
 ## 项目状态 (Status)
 
-- **当前版本线 (Release Line):** `1.0.x` (当前稳定版本: `1.0.5`)
+- **当前版本线 (Release Line):** `1.0.x` (当前稳定版本: `1.0.6`)
 - **开源协议 (License):** Apache License 2.0 (Apache-2.0)
 
 ---

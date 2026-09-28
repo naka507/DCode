@@ -25,6 +25,16 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "1.0.6",
+    date: "2026-09-28",
+    highlights: [
+      "Faster tools in long sessions: the host resolves a tool call's workspace from the session index instead of re-reading the whole transcript, removing a delay that reached about 0.4 s per call in sessions with 10k+ messages.",
+      "Subagents now clear old tool results from their model requests, as the main agent already did, so long delegations stay further from the context window limit.",
+      "Compaction summaries list the files the agent read and modified again; the list was always empty before.",
+      "Resuming a subagent task no longer requires repeating the subagent name; it is taken from the delegation.",
+    ],
+  },
+  {
     version: "1.0.5",
     date: "2026-09-25",
     highlights: [
@@ -96,6 +106,16 @@ const enEntries: ChangelogEntry[] = [
 ];
 
 const zhCNEntries: ChangelogEntry[] = [
+  {
+    version: "1.0.6",
+    date: "2026-09-28",
+    highlights: [
+      "长会话工具调用提速：宿主改为从会话索引解析工具的工作区，不再每次重读整份会话记录；此前在超过 1 万条消息的会话中，每次工具调用会因此多等约 0.4 秒。",
+      "子智能体会像主智能体一样，在发给模型的请求中清理较早的工具结果，长时间委派任务离上下文窗口上限更远。",
+      "上下文压缩摘要重新记录智能体读取和修改过的文件，此前该清单始终为空。",
+      "恢复子智能体任务时不必再重复填写子智能体名称，会自动从委派记录中推断。",
+    ],
+  },
   {
     version: "1.0.5",
     date: "2026-09-25",

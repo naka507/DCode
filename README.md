@@ -13,7 +13,7 @@
 
 ## Status
 
-- **Current release line:** `1.0.x` (Active stable release: `1.0.5`)
+- **Current release line:** `1.0.x` (Active stable release: `1.0.6`)
 - **License:** Apache License 2.0
 
 ---
