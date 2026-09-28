@@ -7221,6 +7221,38 @@ describe("DesktopAgentRuntime subagents", () => {
     await runtime.dispose();
   });
 
+  it.each(["completed", "failed"] as const)("shows retry progress until a delegate resumes or becomes %s", async (status) => {
+    const runtime = createRuntime({ subagents: [explorer] });
+    subagentRuns.calls.length = 0;
+    subagentRuns.instances.length = 0;
+    subagentRuns.deferred = true;
+    try {
+      const started = await taskTool(runtime).execute("retry-task", { agent: "explorer", task: "Find it." });
+      const id = (started.details as { delegationId: string }).delegationId;
+      const list = runtime["agent"].state.tools.find((tool) => tool.name === "TaskList")!;
+      const wait = runtime["agent"].state.tools.find((tool) => tool.name === "TaskWait")!;
+      const child = subagentRuns.calls[0];
+      const retry = { code: "PROVIDER_RATE_LIMITED", providerStatus: 429, phase: "request", attempt: 2, maxAttempts: 10, delayMs: 2000 };
+      child.onProviderRetry(retry);
+      expect((await list.execute("list-retry", {})).content[0]).toMatchObject({ text: expect.stringContaining("retrying after PROVIDER_RATE_LIMITED 429 (attempt 2/10)") });
+      const controller = new AbortController();
+      controller.abort();
+      expect((await wait.execute("wait-retry", { delegationIds: [id] }, controller.signal)).content[0]).toMatchObject({ text: expect.stringContaining("retrying after PROVIDER_RATE_LIMITED") });
+      child.onEvent({ sessionId: "s", ts: Date.now(), event: {
+        type: "message_update", message: { id: "resumed", role: "assistant", content: "Working again", status: "streaming", createdAt: new Date().toISOString() },
+      } });
+      expect((await list.execute("list-resumed", {})).content[0]).toMatchObject({ text: expect.not.stringContaining("retrying after") });
+      child.onProviderRetry(retry);
+      subagentRuns.resolveRun!({ agentName: "explorer", status, report: "Finished.", turns: 1, toolCalls: 0 });
+      await vi.waitFor(() => expect(runtime["delegations"].get(id)?.status).toBe(status));
+      child.onProviderRetry(retry);
+      expect((await list.execute("list-finished", {})).content[0]).toMatchObject({ text: expect.not.stringContaining("retrying after") });
+    } finally {
+      subagentRuns.deferred = false;
+      await runtime.dispose();
+    }
+  });
+
   it("scopes a mutating delegate's tool calls with its permission", async () => {
     const mutator: SubagentDefinition = {
       name: "fixer",

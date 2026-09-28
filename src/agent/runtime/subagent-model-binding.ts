@@ -11,7 +11,12 @@ import {
 } from "./opencode-session-headers.js";
 import { mergeProviderHeaders, withProviderHeaders } from "./provider-headers.js";
 import { agentThinkingLevel as agentThinkingLevelFor, omitThinkingModel as withOmittedThinking } from "./thinking-level.js";
-import { captureProviderResponse, carriesRetryDelayHeaders, createProviderRetryStream } from "./provider-retry.js";
+import {
+  captureProviderResponse,
+  carriesRetryDelayHeaders,
+  createProviderRetryStream,
+  type ProviderRetryController,
+} from "./provider-retry.js";
 import type { AgentOptions } from "@earendil-works/pi-agent-core";
 import type { SubagentThinkingLevel } from "@dcode/shared";
 import type { ClassifiedAgentError } from "./agent-errors.js";
@@ -20,6 +25,8 @@ export type SubagentProviderRetryState = {
   headers?: Record<string, string>;
   status?: number;
   claim: (error: ClassifiedAgentError, phase: "request" | "stream") => number | undefined;
+  /** Called before a request-phase retry waits, like the parent's retry indicator. */
+  onRetry?: ProviderRetryController["onRetry"];
 };
 
 /** Transport and credentials for one exact provider/model; replace together on fallback. */
@@ -91,6 +98,7 @@ export function subagentModelBinding(opts: {
           claim: (error, phase) => retry.claim(error, phase),
           headers: () => retry.headers,
           status: () => retry.status,
+          onRetry: (input) => retry.onRetry?.(input),
         },
       );
     },
