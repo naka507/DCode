@@ -100,7 +100,7 @@ test("PlanStatusCapsule template and styles match the reference mockup", async (
   );
   assert.match(
     chromeCss,
-    /\.plan-circle-icon\s*\{[^}]*border-radius:\s*50%/,
+    /\.plan-circle-icon\s*\{[^}]*border-radius:\s*var\(--radius-round\)/,
     "chrome.css must define circular icon for pending steps",
   );
 });

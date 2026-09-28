@@ -1736,7 +1736,7 @@
 .plan-circle-icon {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   border: 1.5px solid color-mix(in oklab, var(--ds-text-muted) 80%, transparent);
   display: inline-block;
   box-sizing: border-box;
@@ -1768,8 +1768,8 @@
 }
 
 .plan-item-subtitle {
-  font-size: 11px;
-  line-height: 1.25;
+  font-size: var(--text-xs);
+  line-height: var(--leading-tight);
   color: var(--ds-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -1799,7 +1799,7 @@
   background: color-mix(in oklab, var(--ds-bg-elevated-opaque) 50%, transparent);
   cursor: pointer;
   color: var(--ds-text-muted);
-  font-size: 11px;
+  font-size: var(--text-xs);
   user-select: none;
   transition: color var(--motion-duration-fast) var(--motion-ease-out), background var(--motion-duration-fast) var(--motion-ease-out);
 }
