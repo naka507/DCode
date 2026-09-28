@@ -42,7 +42,7 @@ import {
   type SubagentThinkingLevel,
   type UiMessage,
 } from "@dcode/shared";
-import { classifyAgentError } from "./agent-errors.js";
+import { classifyAgentError, type ClassifiedAgentError } from "./agent-errors.js";
 import {
   assistantContent,
   nowIso,
@@ -60,6 +60,7 @@ import {
   isTransientProviderRetryCode,
   providerRateLimitDelayMs,
   providerSetupRetryDelayMs,
+  type ProviderRetryPhase,
 } from "./provider-retry.js";
 
 export const SUBAGENT_TOOL_NAME = "Task";
@@ -98,6 +99,16 @@ export type SubagentToolOutcome = {
   terminate?: boolean;
 };
 
+/** Safe retry metadata for the owner's delegation heartbeat. */
+export type SubagentProviderRetry = {
+  code: string;
+  providerStatus?: number;
+  phase: ProviderRetryPhase;
+  attempt: number;
+  maxAttempts: number;
+  delayMs: number;
+};
+
 export type SubagentRunOptions = {
   definition: SubagentDefinition;
   sessionId: string;
@@ -116,6 +127,7 @@ export type SubagentRunOptions = {
   /** Original parent thinking selection, before primary-model clamping. */
   inheritedThinkingLevel?: SubagentThinkingLevel;
   onModelChange?: (provider: RuntimeProviderConfig, thinkingLevel: SubagentThinkingLevel) => void;
+  onProviderRetry?: (retry: SubagentProviderRetry) => void;
   /** Fully composed child system prompt (see `composeSubagentSystemPrompt`). */
   systemPrompt: string;
   /** Host-backed tools, built by the session runtime so a delegate's calls
@@ -209,6 +221,8 @@ export class SubagentRun {
   private readonly modelFailures: NonNullable<SubagentRunResult["modelFailures"]> = [];
   private readonly retryState: SubagentProviderRetryState = {
     claim: (error, phase) => this.claimProviderRetry(error, phase),
+    onRetry: ({ error, phase, attempt, delayMs }) =>
+      this.reportProviderRetry(error, phase, attempt, delayMs),
   };
   private readonly runAbortController = new AbortController();
 
@@ -380,6 +394,27 @@ export class SubagentRun {
     return ++this.providerTransientRetryAttempt;
   }
 
+  private reportProviderRetry(
+    error: ClassifiedAgentError,
+    phase: ProviderRetryPhase,
+    attempt: number,
+    delayMs: number,
+  ): void {
+    const status = error.details?.providerStatus ?? this.retryState.status;
+    this.opts.onProviderRetry?.({
+      code: error.code,
+      ...(typeof status === "number" && Number.isInteger(status) && status >= 400 && status <= 599
+        ? { providerStatus: status }
+        : {}),
+      phase,
+      attempt,
+      maxAttempts: error.code === "PROVIDER_RATE_LIMITED"
+        ? PROVIDER_RATE_LIMIT_MAX_RETRIES
+        : PROVIDER_TRANSIENT_MAX_RETRIES,
+      delayMs,
+    });
+  }
+
   private async retryPendingProviderFailure(): Promise<void> {
     const retryError = this.pendingProviderRetry;
     if (!retryError) return;
@@ -403,6 +438,13 @@ export class SubagentRun {
               undefined,
               this.retryState.headers,
             );
+      this.reportProviderRetry(
+        retryError, "stream",
+        retryError.code === "PROVIDER_RATE_LIMITED"
+          ? this.providerRateLimitRetryAttempt
+          : this.providerTransientRetryAttempt,
+        delayMs,
+      );
       await delayWithAbort(delayMs, this.runSignal());
       if (this.opts.signal?.aborted) return;
       await this.agent.continue();

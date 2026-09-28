@@ -117,6 +117,10 @@ failures still exhaust the limits; completed tool work is retained on retry.
 TaskWait defaults to 1800 seconds and `any`, returning immediately when the
 required result count settles; `all` keeps its explicit barrier semantics.
 
+TaskList and TaskWait show the retry reason and attempt count while a subagent
+waits to retry a provider request. The retry status clears when work resumes or
+the subagent finishes; completed tool work remains intact.
+
 Custom `openai_compatible` DeepSeek-family reasoning models without an explicit
 off mapping or thinking format use the DeepSeek thinking wire format. `off`
 sends `thinking: {type: "disabled"}`, while `omit` sends neither thinking nor

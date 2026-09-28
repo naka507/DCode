@@ -152,6 +152,7 @@ import {
   SUBAGENT_STOP_TOOL_NAME,
   SUBAGENT_TOOL_NAME,
   SUBAGENT_WAIT_TOOL_NAME,
+  type SubagentProviderRetry,
   type SubagentRunResult,
 } from "./subagent.js";
 import {
@@ -404,6 +405,8 @@ export type DelegationRecord = {
   lastToolName?: string;
   lastPhase?: AgentActivityAgentPhase;
   lastActivityAt: number;
+  /** Provider retry the delegate is waiting out; cleared by its next event. */
+  providerRetry?: SubagentProviderRetry;
   /** `prompt()` / `executeApprovedPlan()` generation that started this run.
    * Resume-after-idle only waits for the current turn's delegates (D352). */
   startedEpoch: number;
@@ -493,6 +496,13 @@ function formatDelegationHeartbeat(record: DelegationRecord): string {
   if (turns > 0) parts.push(`${turns} turns`);
   if (toolCalls > 0) parts.push(`${toolCalls} tool calls`);
   if (record.lastToolName) parts.push(`last tool ${record.lastToolName}`);
+  const retry = record.status === "running" ? record.providerRetry : undefined;
+  if (retry) {
+    const status = retry.providerStatus ? ` ${retry.providerStatus}` : "";
+    parts.push(
+      `retrying after ${retry.code}${status} (attempt ${retry.attempt}/${retry.maxAttempts})`,
+    );
+  }
   return parts.join(", ");
 }
 
@@ -4197,6 +4207,8 @@ Delegation rules:
             });
             this.publishDelegationSettlement(record);
           },
+          onProviderRetry: (retry) =>
+            this.noteDelegationProviderRetry(record, retry),
           systemPrompt: composeSubagentSystemPrompt({
             definition,
             guidance: this.subagentGuidance(definition),
@@ -4297,6 +4309,7 @@ Delegation rules:
         : result.status;
     record.result = result;
     record.completedAt = Date.now();
+    record.providerRetry = undefined;
     if (result.usage) {
       this.turnSubagentUsage = addUsage(this.turnSubagentUsage, result.usage);
     }
@@ -4406,11 +4419,34 @@ Delegation rules:
     );
   }
 
+  /**
+   * A delegate is waiting out a retriable provider failure. Keep it on the
+   * record so `TaskList`, `TaskWait` and the idle-resume heartbeat show a quiet
+   * delegate as backing off rather than stuck, and log it so a later failure
+   * shows how many retries preceded it. Codes and counts only, never the
+   * provider's error text.
+   */
+  private noteDelegationProviderRetry(
+    record: DelegationRecord,
+    retry: SubagentProviderRetry,
+  ): void {
+    if (record.status !== "running") return;
+    record.lastActivityAt = Date.now();
+    record.providerRetry = retry;
+    process.stderr.write(
+      `[agent-runtime] subagent provider retry (session=${this.sessionId} delegation=${record.delegationId} agent=${record.agentName} code=${retry.code}${
+        retry.providerStatus ? ` status=${retry.providerStatus}` : ""
+      } phase=${retry.phase} attempt=${retry.attempt}/${retry.maxAttempts} delayMs=${retry.delayMs})\n`,
+    );
+  }
+
   private noteDelegationActivity(
     record: DelegationRecord,
     envelope: AgentEventEnvelope,
   ): void {
     record.lastActivityAt = Date.now();
+    // Any event after a retry means the retried request is producing again.
+    record.providerRetry = undefined;
     const event = envelope.event;
     if (event.type === "turn_start") {
       record.turns += 1;
@@ -4801,6 +4837,7 @@ Delegation rules:
     const settledCount = () =>
       targets.filter((record) => record.status !== "running").length;
     if (settledCount() >= targetCompleted) return Promise.resolve(false);
+    if (signal?.aborted) return Promise.resolve(true);
     return new Promise<boolean>((resolve) => {
       let done = false;
       const finish = (timedOut: boolean) => {
