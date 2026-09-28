@@ -8,13 +8,13 @@ gives the invocation the rest of the documentation quotes.
 
 These are the checks that block a release. `release.mjs` runs the
 release-documentation gate itself and refuses to tag while any version surface
-disagrees, so a green `check:release-docs` is a precondition, not a substitute.
+disagrees, so a green `node scripts/check-release-docs.mjs` is a precondition, not a substitute.
 
 | Script | Alias | Purpose |
 |---|---|---|
-| `release.mjs` | `node scripts/release.mjs <version> [--tag]` | Bump every dcode version surface (`package.json`, `APP_VERSION`), commit, and optionally create the `vX.Y.Z` tag the Release workflow builds from. The Rust surfaces belong to the sibling `dcore` checkout and are verified, not rewritten |
-| `check-release-docs.mjs` | `pnpm check:release-docs` | Verify the changelog, its test list, `APP_VERSION`, the sibling `dcore` Cargo versions, and the README release lines agree; an absent sibling is a failure, an absent README is reported as unverified |
-| `check-agent-policy-sync.mjs` | `pnpm check:agent-policy` | Verify `AGENTS.md` and `CLAUDE.md` share the same `Policy-Sync` token, cross-references, and non-negotiable policy anchors |
+| `release.mjs` | `node scripts/release.mjs <version> [--tag]` | Refresh the model catalog and bump DCode version surfaces. `--tag` also commits and tags; it does not publish an installer. DCore's independent version surfaces are verified, not rewritten |
+| `check-release-docs.mjs` | `node scripts/check-release-docs.mjs` | Verify DCode version surfaces and locale entries, plus agreement between DCore's own manifest and lock versions. `DCODE_DCORE_DIR` selects a native candidate checkout. An absent sibling fails |
+| `check-agent-policy-sync.mjs` | `node scripts/check-agent-policy-sync.mjs` | Verify `AGENTS.md` and `CLAUDE.md` share the same `Policy-Sync` token, cross-references, and non-negotiable policy anchors |
 | `check-style-tokens.mjs` | run by the desktop `lint` script | Fail renderer styles that hardcode values instead of design-system tokens |
 
 ## Packaging
@@ -35,14 +35,14 @@ disagrees, so a green `check:release-docs` is a precondition, not a substitute.
 
 | Script | Alias | Purpose |
 |---|---|---|
-| `dev-electron.mjs` | `pnpm dev`, through `predev` | Launch Electron against the dev server. On macOS it builds and reuses the fingerprinted branded host bundle under `.cache/electron-dev/` |
+| `dev-electron.mjs` | `npm run dev`, through `predev` | Launch Electron against the dev server. On macOS it builds and reuses the fingerprinted branded host bundle under `.cache/electron-dev/` |
 
 ## End-to-end
 
 Do not run these from an agent session, and do not trigger the remote jobs by
 hand, unless the request explicitly asks for it (see `AGENTS.md`). The scenarios
-they cover are specified in
-[the E2E test plan](../docs/spec/06-delivery/04-e2e-test-plan.md).
+they cover are implemented in the scripts listed below. Use an isolated test
+profile and the candidate host binary, never a running production instance.
 
 | Script | Alias | Purpose |
 |---|---|---|
@@ -60,6 +60,7 @@ they cover are specified in
 | `e2e-provider-ipc-payload.mjs` | `npm run test:e2e:provider-ipc-payload` | Saving a new AI service across the real `window.dcode.invoke` boundary, which `structuredClone` enforces |
 | `e2e-remote-host.mjs` | `npm run test:e2e:remote-host` | Remote host attach and reconnect |
 | `e2e-rpc-unicode.mjs` | `npm run test:e2e:rpc-unicode` | Unicode round-tripping across the RPC boundary |
+| `e2e-prompt-read-grants.mjs` | `npm run test:e2e:prompt-read-grants` | User-path read grants, write denial, junction containment, stale turns, revoke and restart; requires `DCODE_HOST_BIN`, uses only isolated files |
 | `e2e-session-collaboration.mjs` | `npm run test:e2e:collaboration` | Multi-participant session collaboration |
 | `e2e-session-completion.mjs` | `npm run test:e2e:session-completion` | Session completion and its persisted outcome |
 | `e2e-subagent-models.mjs` | `npm run test:e2e:subagent-models` | Per-subagent model and fallback-model selection |
@@ -77,30 +78,14 @@ runner.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs two jobs on pushes to `main`, on pull requests,
-and on manual dispatch, skipping both when a change touches only `docs/**` or
-`**/*.md`:
+This checkout does not contain `.github/workflows`; do not assume a remote
+gate runs from a local build result. The executable local gates are
+`npm run typecheck`, `npm test`, `npm run test:unit`, `npm run lint`,
+`npm run build`, and `npm run build:sidecar`. Run the native host's
+`cargo test --locked -p host-core` in its separate checkout. On Windows,
+`build.cmd` supplies the MSVC environment.
 
-- **JS build / typecheck / lint / test** — `pnpm install --frozen-lockfile`,
-  `pnpm build:js`, `pnpm --filter @dcode/desktop typecheck`, `pnpm lint`,
-  `pnpm -r --if-present test`
-- **Rust host-core test** — `cargo test -p host-core --locked`
-
-`.github/workflows/docs-check.yml` covers the paths `ci.yml` ignores: it runs
-`pnpm docs:check` (the docs locale pair check) when `docs/**`, the READMEs, the
-shared changelog sources, or the check scripts change. `check:release-docs` is
-deliberately not in CI because it fails on rc versions by design.
-
-`.github/workflows/release.yml` builds on a `v*.*.*` tag. A `verify` job first
-repeats the `ci.yml` checks (a tag push does not trigger `ci.yml`), and the
-build matrix waits for it. Each platform runner then
-validates the tag against `package.json` before packaging, then
-runs the native `dist:mac`, `dist:win`, or `dist:linux` command. The Linux
-job uses Ubuntu 22.04 so host-core stays on glibc 2.35, then
-`scripts/check-linux-host-glibc.mjs` refuses a binary that needs a newer
-glibc. The Linux runner also exports the exact app.asar from `linux-unpacked`
-as a versioned release asset; the macOS matrix covers arm64 and Intel x64 and
-the publish job assembles the GitHub Release. The release workflow defaults to
-unsigned macOS artifacts; manually dispatch it with `sign_macos: true` to opt
-into signing and notarization. See the [release
-runbook](../docs/spec/06-delivery/06-release-runbook.md).
+Validate the task candidate in its dedicated worktree, then validate the actual
+PR integration candidate before merging. Desktop E2E still follows the explicit
+authorization rule above. Use `package.json` for available packaging commands;
+this document does not establish that an installer was published or installed.

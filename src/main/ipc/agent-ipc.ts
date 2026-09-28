@@ -13,6 +13,7 @@ import type { PersistenceOutbox } from "../persistence-outbox";
 import type { ComposerCommandService } from "./composer-ipc";
 import type { IpcRegistrar } from "./types";
 import { withPromptEnhancementTimeout } from "../prompt-enhancement-timeout";
+import { grantPromptReadPaths } from "../../engine/prompt-read-grants";
 
 export type AgentIpcDependencies = {
   registrar: IpcRegistrar;
@@ -283,6 +284,8 @@ export function registerAgentIpc({
     };
     // Revalidate inside the runtime after all file/host IO. A stale target must
     // never turn into a normal prompt or alter the next turn's configuration.
+    if (!isTurnDispatchable(req.sessionId, req.expectedTurnId)) return { accepted: false };
+    if (!req.suppressPromptReadGrants) await grantPromptReadPaths(host, req.sessionId, req.content, req.expectedTurnId);
     return sidecar.call<{ accepted: boolean; turnId: string }>("agent.steer", {
       sessionId: req.sessionId, expectedTurnId: req.expectedTurnId, message,
       content: appendPromptFallbackPaths(req.content, prepared),
@@ -545,6 +548,7 @@ export function registerAgentIpc({
         message: userMessage,
         turnId: durableTurnId,
       });
+      if (!sessionMessage && !req.suppressPromptReadGrants) await grantPromptReadPaths(host, req.sessionId, req.content, durableTurnId);
     } catch (error) {
       await finishTurn(
         req.sessionId,

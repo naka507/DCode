@@ -23,7 +23,9 @@ const repoRoot = resolve(helpersDir, "..", "..");
 /** Candidate roots, nearest first, for each sibling checkout. */
 const SIBLINGS = {
   /** host-core: the Rust host the desktop app spawns. */
-  dcore: [join(repoRoot, "..", "dcore"), join(repoRoot, "..", "..", "dcore")],
+  dcore: process.env.DCODE_DCORE_DIR?.trim()
+    ? [resolve(process.env.DCODE_DCORE_DIR.trim())]
+    : [join(repoRoot, "..", "dcore"), join(repoRoot, "..", "..", "dcore")],
 };
 
 function firstExisting(paths) {

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Policy-Sync: 2026-09-24.3
+Policy-Sync: 2026-09-28.1
 
 Mandatory rules for AI coding agents working in dcode.
 
@@ -276,7 +276,7 @@ Every development request uses:
 The primary checkout and local `main` are coordination surfaces, not
 development workspaces.
 
-This repository's default branch on `origin` is `master`. Where this file
+This repository's default branch on `origin` is `main`. Where this file
 says `main`, read "the repository's default branch".
 
 ### Never

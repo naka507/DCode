@@ -29,7 +29,7 @@ const APP_VERSION = "1.0.0";
  * A miniature `dcode` + `dcore` pair. `dcore` files are written with the line
  * endings the real sibling uses: CRLF for `Cargo.lock`, LF for `Cargo.toml`.
  */
-function writeFixture({ hostCoreVersion = APP_VERSION, withDcore = true } = {}) {
+function writeFixture({ hostWorkspaceVersion = APP_VERSION, hostCoreVersion = hostWorkspaceVersion, withDcore = true } = {}) {
   const cacheRoot = join(repoRoot, "node_modules", ".cache");
   mkdirSync(cacheRoot, { recursive: true });
   const base = mkdtempSync(join(cacheRoot, "release-docs-fixture-"));
@@ -86,7 +86,7 @@ function writeFixture({ hostCoreVersion = APP_VERSION, withDcore = true } = {}) 
         "",
         "[workspace.package]",
         'edition = "2021"',
-        `version = "${APP_VERSION}"`,
+        `version = "${hostWorkspaceVersion}"`,
         "",
       ].join("\n"),
       "utf8",
@@ -116,6 +116,7 @@ function runGate(dcode, args = [APP_VERSION]) {
   const result = spawnSync(process.execPath, [scriptRelativePath, ...args], {
     cwd: dcode,
     encoding: "utf8",
+    env: { ...process.env, DCODE_DCORE_DIR: "" },
   });
   return {
     status: result.status ?? 1,
@@ -146,6 +147,13 @@ test("a sibling Cargo.lock version mismatch fails and names the sibling file", (
     const result = runGate(dcode);
     assert.equal(result.status, 1, "a mismatched host-core version must fail the gate");
     assert.match(result.stderr, /\.\.\/dcore\/Cargo\.lock: host-core version is 0\.9\.9/);
+  });
+});
+
+test("independently versioned DCode and DCore pass when the native version surfaces agree", () => {
+  withFixture({ hostWorkspaceVersion: "1.2.3" }, ({ dcode }) => {
+    const result = runGate(dcode);
+    assert.equal(result.status, 0, result.stderr);
   });
 });
 

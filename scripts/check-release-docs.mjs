@@ -51,6 +51,11 @@ const notes = [];
  * resolves the same sibling. Returns null when the checkout is absent.
  */
 function resolveDcore(relPath) {
+  const configured = process.env.DCODE_DCORE_DIR?.trim();
+  if (configured) {
+    const file = path.resolve(configured, relPath);
+    return existsSync(file) ? file : null;
+  }
   for (const candidate of [
     path.join(root, "..", "dcore"),
     path.join(root, "..", "..", "dcore"),
@@ -77,6 +82,8 @@ for (const relPath of packageFiles) {
   if (found !== version) fail(relPath, `version is ${found}, expected ${version}`);
 }
 
+// The native host is released independently; its manifest and lock must agree.
+let hostVersion;
 for (const [relPath, pattern, label] of [
   ["Cargo.toml", /\[workspace\.package\][\s\S]*?\bversion = "([^"]+)"/, "[workspace.package] version"],
   // `\r?\n`: the sibling checkout keeps Cargo.lock at CRLF, and the
@@ -90,7 +97,12 @@ for (const [relPath, pattern, label] of [
     continue;
   }
   const found = readFileSync(file, "utf8").match(pattern)?.[1];
-  if (found !== version) fail(display, `${label} is ${found ?? "missing"}, expected ${version}`);
+  if (relPath === "Cargo.toml") hostVersion = found;
+  if (!found || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/.test(found)) {
+    fail(display, `${label} is ${found ?? "missing"}, expected a native component version`);
+  } else if (found !== hostVersion) {
+    fail(display, `${label} is ${found}, expected ${hostVersion} from Cargo.toml`);
+  }
 }
 
 const appVersionPath = "src/shared/protocol.ts";

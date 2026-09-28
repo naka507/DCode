@@ -364,8 +364,8 @@ const MAX_RETAINED_DELEGATIONS = 100;
  * returns a heartbeat plus any finished reports, and the runtime delivers the
  * rest when they finish even if the parent already stopped calling tools.
  */
-const TASKWAIT_DEFAULT_TIMEOUT_SECONDS = 600;
-const TASKWAIT_MAX_TIMEOUT_SECONDS = 900;
+const TASKWAIT_DEFAULT_TIMEOUT_SECONDS = 1800;
+const TASKWAIT_MAX_TIMEOUT_SECONDS = 1800;
 /**
  * A `TaskWait` result is the parent's context; like a delegate's report, it
  * must not become the context problem delegation exists to avoid.
@@ -4649,7 +4649,7 @@ Delegation rules:
       name: SUBAGENT_WAIT_TOOL_NAME,
       label: "Task Wait",
       description:
-        "Wait for one or more subagents started by Task and return their reports. `delegationIds` defaults to every running subagent; defaults to mode \"any\" to converge as soon as the first finishes (or use mode \"all\" to wait for every target). Settled delegations return immediately, so re-reading a report by id is cheap. A wait timeout is not a failure: unfinished delegates keep working and the runtime delivers their reports when they finish.",
+        "Wait for one or more subagents started by Task and return their reports. `delegationIds` defaults to every running subagent. Prefer mode \"any\" (the default) to process each result as soon as it arrives; use \"all\" only when the next step requires every target's result. The default wait is 1800 seconds, returning early when the requested results arrive. Settled delegations return immediately. A timeout is not a failure: unfinished delegates keep working and the runtime delivers their reports when they finish; avoid repeated short polling.",
       parameters: Type.Object({
         delegationIds: Type.Optional(
           Type.Array(

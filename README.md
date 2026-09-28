@@ -13,7 +13,7 @@
 
 ## Status
 
-- **Current release line:** `1.0.x` (Active stable release: `1.0.6`)
+- **Current release line:** `1.0.x` (Active stable release: `1.0.7`)
 - **License:** Apache License 2.0
 
 ---
@@ -59,7 +59,7 @@ DCode adheres to a strictly defined multi-process architecture with clean owners
 - **Multi-Provider Model Hub**: Seamless integration with Anthropic Claude, OpenAI, DeepSeek, Ollama, and arbitrary OpenAI-compatible gateways, enriched automatically with the `models.dev` catalog.
 - **Plan Mode Closed-Loop & Capsule Popover**: Renders a floating plan status capsule in the top-right of the transcript during plan execution with phase names and pulse animations; clicking expands an inline detail popover showing checklist items, progress bars, artifact document links, and report copying without disturbing the main workspace.
 - **Plugin DevKit & Extensibility**: First-class plugin SDK and CLI (`pi-plugin`) supporting custom webview panels, tool contributions, commands, and skills.
-- **Safe Managed Mode & Containment**: First-class `auto` mode that restricts agent operations strictly to project folders, `.dcode` state and memory directories, and historically granted paths. Within bounds, the model can read, write, and delete files autonomously without dialogs; out-of-scope calls are immediately denied without interrupting the task loop.
+- **Safe Managed Mode & Containment**: Native file tools operate within project folders, `.dcode` state and granted paths. External references named by the user receive session-scoped read access; writes remain restricted. Bash runs with a workspace CWD but is not an OS filesystem sandbox.
 - **Context Capacity & Reasoning Inspector**: Real-time context capacity ring and multi-segment breakdown in the composer toolbar backed entirely by the Agent Runtime backend. Physical schema and prompt character measurement guarantees strict token conservation without rounding drift, provides true visibility for Skills and MCP tool schemas, extracts reasoning/thought tokens (e.g. DeepSeek R1, Claude 3.7 Sonnet, OpenAI o-series), and stabilizes occupancy against cache hit/miss fluctuations.
 - **Silent Microcompact Policy**: Intelligent trimming for historical tool results. Retains the latest tool call outputs while silently replacing older bulky outputs (`ReadFile`, `Bash`, `Grep`, `Glob`) with lightweight placeholders, slashing 50%~80% context tokens locally without requiring an expensive LLM summarization roundtrip.
 - **Plan & Goal Workflow Stage Stepper**: Automatically parses multi-stage execution phases and step checklists from Markdown plans within the approval bar, rendering an interactive pipeline stepper (completed, in-progress, pending) and progress meter.
@@ -149,22 +149,31 @@ npm run dev
 DCode implements an expressive, tiered permission model (`ask`, `accept-edits`, and `auto`). When operating under **Safe Managed Mode (`auto`)**, operations adhere to the following containment rules:
 
 ### 1. Authorized Scope
-Tool access is strictly authorized across:
+Native file-tool access is authorized across:
 - **Project Workspaces**: All directories configured for the project group (multi-root `ProjectGroupRoot` collections).
 - **`.dcode` State & Memory**: Global data directories (`~/.dcode`) and project-local `.dcode/` trees.
 - **Granted External Paths**: Any external directory or file explicitly approved by the user and cached in `authorized_paths`.
 - **Session Scratch**: An isolated execution sandbox directory (`scratch`) allocated per session.
+
+Existing absolute paths in original user messages grant **Read/Grep/Glob only**
+for that session. Quote paths containing spaces. A file grants only itself; a
+directory grants its canonical descendants. Automated input cannot create these
+grants. Clearing session grants or restarting the host revokes them.
 
 ### 2. Autonomous In-Scope Operations
 Within the authorized scope, the LLM has complete operational freedom:
 - Reading, writing, modifying, and **deleting** files (including shell deletion commands like `rm` and `del`, with the process current working directory locked to the workspace root) execute automatically without prompting the user.
 
 ### 3. Fail-Fast Out-of-Scope Containment (Non-Interrupting)
-- Whenever a tool call targets paths outside the authorized scope:
+- Whenever a native file tool targets paths outside its authorized scope:
   - The privileged native host (**DCore**) hard-rejects the request immediately (`PermissionDecision::Deny`).
   - **No approval card is displayed and task execution is never suspended or interrupted**.
   - The refusal is provided directly as a standard tool error result to the model.
   - The model recognizes the boundary error and autonomously adapts within the workspace, ensuring smooth and safe automated workflows.
+
+Bash's working directory does not prevent arbitrary commands from accessing
+external absolute paths. Prompt read grants reduce reference-reading friction;
+they do not provide shell filesystem isolation.
 
 ---
 

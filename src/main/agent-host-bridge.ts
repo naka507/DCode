@@ -122,6 +122,7 @@ export function createAgentHostBridge(options: AgentHostBridgeOptions) {
           {
             sessionId: request.sessionId,
             content: request.content,
+            ...(request.principal.subject === "extension" ? { suppressPromptReadGrants: true } : {}),
             ...(request.sessionMessageId ? { sessionMessageId: request.sessionMessageId } : {}),
             ...(request.attachments ? { attachments: request.attachments } : {}),
             ...(permissionModeOverride ? { permissionMode: permissionModeOverride } : {}),
@@ -158,6 +159,7 @@ export function createAgentHostBridge(options: AgentHostBridgeOptions) {
             sessionId: request.sessionId,
             expectedTurnId: request.turnId,
             content: request.content,
+            ...(request.principal.subject === "extension" || request.sessionMessageId ? { suppressPromptReadGrants: true } : {}),
             ...(request.sessionMessageId ? { messageId: request.sessionMessageId } : {}),
             ...(request.attachments ? { attachments: request.attachments } : {}),
           },
@@ -251,9 +253,9 @@ export function createAgentHostBridge(options: AgentHostBridgeOptions) {
 
   /** The desktop's queue operations, all under the owner principal. */
   const queue = {
-    async push(request: AgentQueuePushRequest): Promise<QueuedTurnSummary> {
+    async push(request: AgentQueuePushRequest, source: "user" | "extension" = "user"): Promise<QueuedTurnSummary> {
       const result = await forIpc(() =>
-        agentHost.startTurn(DESKTOP_PRINCIPAL, {
+        agentHost.startTurn(source === "extension" ? { ...DESKTOP_PRINCIPAL, subject: "extension" } : DESKTOP_PRINCIPAL, {
           sessionId: request.sessionId,
           admission: "queue",
           ...(request.idempotencyKey ? { idempotencyKey: request.idempotencyKey } : {}),

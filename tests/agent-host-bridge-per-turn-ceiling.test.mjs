@@ -70,6 +70,15 @@ async function callStart(bridge, principal, effective) {
   }).catch((error) => error);
 }
 
+test("extension queue input retains its origin and cannot create prompt read grants", async () => {
+  const { bridge, prompts } = fixture({ sessionPermissionMode: "auto" });
+  await bridge.queue.push({ sessionId: "s1", content: "Read /outside/file" }, "extension");
+  for (let i = 0; i < 5 && prompts.length === 0; i++) await new Promise(setImmediate);
+  const prompt = prompts.find((entry) => entry.channel === IPC.invoke.agentPrompt);
+  assert.ok(prompt, "extension input still reaches the runtime");
+  assert.equal(prompt.request.suppressPromptReadGrants, true);
+});
+
 test("a matching session/effective mode leaves the sidecar call without an override", async () => {
   const { bridge, prompts } = fixture({ sessionPermissionMode: "auto" });
   const outcome = await callStart(bridge, DESKTOP_PRINCIPAL);

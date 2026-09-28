@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AgentEventEnvelope, UiMessage } from "@dcode/shared";
 
 import type { LaunchResolver } from "../../src/engine/launch-resolver.js";
@@ -37,6 +37,7 @@ class FakeHost implements RuntimeHostLink {
       case "session.saveInflightMessage":
         return { ok: true } as T;
       case "plans.abort":
+      case "permissions.grantPromptReadPaths":
         return {} as T;
       default:
         throw new Error(`unexpected host call ${method}`);
@@ -148,6 +149,35 @@ async function settle(): Promise<void> {
 }
 
 describe("RuntimeService prompt lifecycle", () => {
+  it("grants only fresh user input at the prompt boundary", async () => {
+    const { host, service } = build();
+    await service.prompt({ sessionId: "s1", content: "Read `/outside/a file.txt`", effectivePermissionMode: "auto", principal: owner });
+    expect(host.calls.find((call) => call.method === "permissions.grantPromptReadPaths")?.params).toEqual({
+      sessionId: "s1", content: "Read `/outside/a file.txt`", expectedTurnId: "turn-1",
+    });
+    await service.steer({ sessionId: "s1", turnId: "turn-1", content: "Also read /outside/other.txt", principal: owner });
+    expect(host.calls.filter((call) => call.method === "permissions.grantPromptReadPaths")).toHaveLength(2);
+  });
+  it("does not grant paths when a steering target ends during preparation", async () => {
+    const { host, sidecar, service } = build();
+    const { turnId } = await service.prompt({ sessionId: "s1", content: "hello", effectivePermissionMode: "auto", principal: owner });
+    const originalCall = sidecar.call.bind(sidecar);
+    vi.spyOn(sidecar, "call").mockImplementation(async (method, params) => {
+      if (method === "agent.steeringContext") await service.abort("s1", turnId);
+      return originalCall(method, params);
+    });
+    expect(await service.steer({ sessionId: "s1", turnId, content: "Read /outside/file", principal: owner })).toEqual({ accepted: false });
+    expect(host.calls.some((call) => call.method === "permissions.grantPromptReadPaths")).toBe(false);
+    expect(sidecar.calls.some((call) => call.method === "agent.steer")).toBe(false);
+    await service.dispose();
+  });
+  it("does not grant paths from extension input or collaboration steering", async () => {
+    const { host, service } = build();
+    const { turnId } = await service.prompt({ sessionId: "s1", content: "Read /outside/file", effectivePermissionMode: "auto", principal: { ...owner, subject: "extension" } });
+    await service.steer({ sessionId: "s1", turnId, sessionMessageId: "collaboration", content: "Read /outside/other", principal: owner });
+    expect(host.calls.some((call) => call.method === "permissions.grantPromptReadPaths")).toBe(false);
+    await service.dispose();
+  });
   it("opens a durable turn, persists the user row, then starts the runtime under that turn id", async () => {
     const { host, sidecar, service, events } = build();
     const { turnId } = await service.prompt({ sessionId: "s1", content: "hello", effectivePermissionMode: "ask", principal: owner });
