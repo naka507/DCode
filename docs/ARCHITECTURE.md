@@ -1,6 +1,6 @@
 # dcode architecture
 
-`dcode` is a shipped desktop agent application, version `1.0.7`
+`dcode` is a shipped desktop agent application, version `1.0.8`
 (`package.json`, agreed by `APP_VERSION` in `src/shared/protocol.ts`).
 
 This document records the parts of the architecture that are not recoverable
@@ -127,6 +127,25 @@ sends `thinking: {type: "disabled"}`, while `omit` sends neither thinking nor
 reasoning effort. Named aggregators and explicit metadata keep their formats.
 Wire-level tests establish request construction, not a gateway's compliance;
 actual reasoning-token reduction requires production measurement.
+
+### Native compaction and subagent loop control (2026-10-01)
+
+Synthetic microcompaction was removed from both session context and subagent
+delegation pipelines. Aggressive microcompaction truncated essential code
+semantics and caused prompt drift, degrading model task adherence in complex
+programming workflows. Context management now relies exclusively on native
+container-budget auto compaction (`runtime.ts`).
+
+To prevent subagent procrastination and infinite hallucination in thought chains:
+1. Subagent thinking levels are graduated (`researcher`: `low`, `tester`: `minimal`,
+   `coder`/`designer`: `medium`, `reviewer`: `off`). System prompts enforce strict
+   grounding and action-first invariants forbidding mental simulation.
+2. `SubagentRun` enforces an explicit step budget (`maxSteps`), injecting a
+   convergence notice at 70% of the budget and terminating the tool execution loop
+   at 100% to compel final deliverable synthesis.
+3. An idempotent tool loop breaker monitors consecutive calls to read-only and
+   command-running tools with identical argument fingerprints, warning at 3
+   repetitions and aborting with an error at 5 repetitions.
 
 Changing a frozen architecture, public interface, data ownership model, or
 security boundary requires a recorded decision. This repository keeps no

@@ -23,10 +23,6 @@ import {
   retainedReasoningToMessages,
   type ReasoningReplayIdentity,
 } from "./reasoning-replay.js";
-import {
-  applyMicrocompact,
-  type MicrocompactOptions,
-} from "./microcompact.js";
 
 /**
  * Failed, aborted, and deferred assistants are transcript rows, not context.
@@ -95,14 +91,12 @@ export function sessionEntryToContextMessages(
 export function buildSessionContext(
   pathEntries: readonly Entry[],
   identity?: ReasoningReplayIdentity,
-  microcompactOptions?: MicrocompactOptions,
 ): {
   messages: AgentMessage[];
 } {
-  const raw = buildContextEntries(pathEntries).flatMap((entry) =>
-    sessionEntryToContextMessages(entry, identity),
-  );
   return {
-    messages: applyMicrocompact(raw, microcompactOptions),
+    messages: buildContextEntries(pathEntries).flatMap((entry) =>
+      sessionEntryToContextMessages(entry, identity),
+    ),
   };
 }

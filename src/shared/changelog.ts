@@ -25,6 +25,16 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "1.0.8",
+    date: "2026-10-01",
+    highlights: [
+      "Removed synthetic microcompaction to prevent context truncation and prompt drift; restored native container-budget auto context compaction.",
+      "Explicit DeepSeek thinking protocol support for custom gateways ensures reasoning tokens and thought chains are cleanly preserved without model degradation.",
+      "Graduated subagent thinking levels (researcher: low, tester: minimal, coder/designer: medium) paired with strict grounding and action-first system prompts to prevent mental simulation.",
+      "Subagent step budgets (convergence notice at 70%, hard termination at 100%) and identical-call loop breakers (warn at 3, abort at 5) eliminate task procrastination and repetitive tool loops.",
+    ],
+  },
+  {
     version: "1.0.7",
     date: "2026-09-28",
     highlights: [
@@ -116,6 +126,16 @@ const enEntries: ChangelogEntry[] = [
 ];
 
 const zhCNEntries: ChangelogEntry[] = [
+  {
+    version: "1.0.8",
+    date: "2026-10-01",
+    highlights: [
+      "彻底移除微压缩机制，避免因激进裁切导致模型理解力下降与任务走偏；恢复基于容器预算的原生上下文自动压缩。",
+      "深度对齐自定义网关的 DeepSeek 思维链协议（thinkingFormat），确保中转网关正确保留与透传思考过程，消除降智隐患。",
+      "阶梯化升级子智能体思考等级（调研 low、测试 minimal、编程/设计 medium），并在提示词中强化事实锚定与行动导向，严禁在思考中凭空脑补代码。",
+      "新增子智能体执行步骤预算（70% 收敛预警、100% 强制终止交付）与工具重复调用死循环熔断器（3 次警告、5 次熔断），杜绝空转拖延。",
+    ],
+  },
   {
     version: "1.0.7",
     date: "2026-09-28",

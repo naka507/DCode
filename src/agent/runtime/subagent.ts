@@ -48,10 +48,11 @@ import {
   nowIso,
   usageFromPi,
 } from "./agent-messages.js";
+
 import type { RuntimeProviderConfig } from "./provider-binding.js";
-import { applyMicrocompact } from "./microcompact.js";
 import { clampThinkingLevel } from "./thinking-level.js";
 import { subagentModelBinding, type SubagentProviderRetryState } from "./subagent-model-binding.js";
+
 import {
   classifyProviderError,
   delayWithAbort,
@@ -74,6 +75,22 @@ export const SUBAGENT_STOP_TOOL_NAME = "TaskStop";
 /** The report is the only thing that enters the parent's context; keep it
  * from becoming the context problem delegation was supposed to avoid. */
 export const MAX_SUBAGENT_REPORT_CHARS = 12_000;
+
+export const DEFAULT_SUBAGENT_MAX_STEPS: Record<string, number> = {
+  researcher: 15,
+  tester: 15,
+  reviewer: 10,
+  coder: 25,
+  designer: 25,
+};
+export const DEFAULT_FALLBACK_SUBAGENT_MAX_STEPS = 20;
+
+export function defaultSubagentMaxSteps(agentName: string): number {
+  return (
+    DEFAULT_SUBAGENT_MAX_STEPS[agentName.toLowerCase()] ??
+    DEFAULT_FALLBACK_SUBAGENT_MAX_STEPS
+  );
+}
 
 export type SubagentRunStatus = SharedSubagentRunStatus;
 
@@ -126,6 +143,8 @@ export type SubagentRunOptions = {
   fallbackModels?: Array<{ key: string; provider?: RuntimeProviderConfig }>;
   /** Original parent thinking selection, before primary-model clamping. */
   inheritedThinkingLevel?: SubagentThinkingLevel;
+  /** Maximum tool steps allowed for this delegate before forced convergence. */
+  maxSteps?: number;
   onModelChange?: (provider: RuntimeProviderConfig, thinkingLevel: SubagentThinkingLevel) => void;
   onProviderRetry?: (retry: SubagentProviderRetry) => void;
   /** Fully composed child system prompt (see `composeSubagentSystemPrompt`). */
@@ -225,24 +244,25 @@ export class SubagentRun {
       this.reportProviderRetry(error, phase, attempt, delayMs),
   };
   private readonly runAbortController = new AbortController();
+  private readonly maxSteps: number;
+  private warnedApproachingLimit = false;
+  private lastToolFingerprint?: string;
+  private consecutiveIdenticalToolCalls = 0;
 
   constructor(opts: SubagentRunOptions) {
     this.opts = opts;
     this.provider = opts.provider;
     this.thinkingLevel = opts.thinkingLevel;
+    this.maxSteps =
+      opts.maxSteps ??
+      opts.definition.maxSteps ??
+      defaultSubagentMaxSteps(opts.definition.name);
     this.attemptedModels.add(`${opts.provider.id}/${opts.provider.modelId}`);
     const binding = this.modelBinding();
     this.agent = new Agent({
       streamFn: binding.streamFn,
       getApiKey: binding.getApiKey,
       convertToLlm,
-      // A delegate runs a long tool loop and never checkpoints, so every file
-      // read and command log it produced used to ride along in each request
-      // until the run ended. Clear bulky old tool results with the same policy
-      // as the parent's context projection. Only the outgoing request is
-      // trimmed: the agent state and the transcript rows it emits keep every
-      // message intact.
-      transformContext: async (messages) => applyMicrocompact(messages),
       afterToolCall: async (context) => this.afterToolCall(context),
       initialState: {
         systemPrompt: opts.systemPrompt,
@@ -487,16 +507,108 @@ export class SubagentRun {
     };
   }
 
-  /** Parent bookkeeping: host failures and a mutation-failure terminate. */
+  private appendNoticeToContent(
+    content: unknown,
+    notice: string,
+  ): Array<{ type: "text"; text: string } | unknown> {
+    if (typeof content === "string") {
+      return [{ type: "text", text: content + notice }];
+    }
+    if (Array.isArray(content)) {
+      const copy = [...content];
+      const last = copy[copy.length - 1];
+      if (
+        last &&
+        typeof last === "object" &&
+        (last as any).type === "text" &&
+        typeof (last as any).text === "string"
+      ) {
+        copy[copy.length - 1] = {
+          ...last,
+          text: (last as any).text + notice,
+        };
+        return copy;
+      }
+      return [...copy, { type: "text", text: notice }];
+    }
+    return [{ type: "text", text: notice }];
+  }
+
+  /** Parent bookkeeping: host failures, step budget, loop breaker, and mutation-failure terminate. */
   private async afterToolCall(
     context: AfterToolCallContext,
   ): Promise<AfterToolCallResult | undefined> {
     const parent = this.opts.resolveToolOutcome?.(context);
-    const terminate = parent?.terminate === true;
-    if (!parent?.isError && !terminate) return undefined;
+    let terminate = parent?.terminate === true;
+    let isError = parent?.isError;
+    let contentModifier: unknown[] | undefined;
+
+    // 1. Loop detection: check consecutive identical read-only/shell tool calls with non-empty arguments
+    const rawToolName = context.toolCall?.name;
+    const toolName = rawToolName?.toLowerCase();
+    const isLoopGuardedTool = Boolean(
+      toolName && [
+        "read",
+        "readfile",
+        "view_file",
+        "grep",
+        "glob",
+        "search_code",
+        "websearch",
+        "webfetch",
+        "bash",
+      ].includes(toolName),
+    );
+    const hasArgs = context.args && Object.keys(context.args).length > 0;
+
+    if (isLoopGuardedTool && hasArgs && rawToolName) {
+      const fingerprint = `${rawToolName}:${JSON.stringify(context.args)}`;
+      if (this.lastToolFingerprint === fingerprint) {
+        this.consecutiveIdenticalToolCalls += 1;
+      } else {
+        this.lastToolFingerprint = fingerprint;
+        this.consecutiveIdenticalToolCalls = 1;
+      }
+
+      if (this.consecutiveIdenticalToolCalls >= 5) {
+        terminate = true;
+        isError = true;
+        const notice = `\n\n[Loop Breaker: Aborting tool loop. The tool "${rawToolName}" was called 5 times consecutively with identical arguments without making progress.]`;
+        contentModifier = this.appendNoticeToContent(context.result?.content, notice);
+      } else if (this.consecutiveIdenticalToolCalls >= 3) {
+        const notice = `\n\n[Warning: Repeated identical tool call detected. You have already executed this exact call with the same arguments. Stop repeating and proceed using the retrieved information.]`;
+        contentModifier = this.appendNoticeToContent(context.result?.content, notice);
+      }
+    } else {
+      this.lastToolFingerprint = undefined;
+      this.consecutiveIdenticalToolCalls = 0;
+    }
+
+    // 2. Step budget enforcement
+    if (this.toolCalls >= this.maxSteps) {
+      terminate = true;
+      const notice = `\n\n[System Notice: Maximum step budget reached (${this.toolCalls}/${this.maxSteps}). The tool execution loop is terminated. You must now compile and output your final deliverable report based on current evidence.]`;
+      contentModifier = this.appendNoticeToContent(
+        contentModifier ?? context.result?.content,
+        notice,
+      );
+    } else if (
+      !this.warnedApproachingLimit &&
+      this.toolCalls >= Math.floor(this.maxSteps * 0.7)
+    ) {
+      this.warnedApproachingLimit = true;
+      const notice = `\n\n[System Notice: Step budget approaching limit (${this.toolCalls}/${this.maxSteps}). Stop further wide exploration and converge immediately to compile your findings into the final report.]`;
+      contentModifier = this.appendNoticeToContent(
+        contentModifier ?? context.result?.content,
+        notice,
+      );
+    }
+
+    if (!isError && !terminate && !contentModifier) return undefined;
     return {
-      ...(parent?.isError ? { isError: true } : {}),
+      ...(isError ? { isError: true } : {}),
       ...(terminate ? { terminate: true } : {}),
+      ...(contentModifier ? { content: contentModifier as any } : {}),
     };
   }
 

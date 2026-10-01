@@ -70,6 +70,8 @@ export type SubagentDefinition = {
    * rather than per run.
    */
   maxTokens?: number;
+  /** Maximum tool steps allowed for this delegate before forced convergence. */
+  maxSteps?: number;
   /** Idle watchdog in seconds; parser materializes the default for documents. */
   idleTimeoutSeconds?: number;
   /** Total runtime watchdog in seconds; parser materializes the default. */

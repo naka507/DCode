@@ -2,10 +2,6 @@ import { createServer } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { SubagentRun } from "../../src/agent/runtime/subagent.js";
-import {
-  DEFAULT_MICROCOMPACT_KEEP_RECENT,
-  MICROCOMPACT_CLEARED_TOOL_RESULT,
-} from "../../src/agent/runtime/microcompact.js";
 import type { RuntimeProviderConfig } from "../../src/agent/runtime/provider-binding.js";
 
 type Request = {
@@ -82,9 +78,9 @@ function text(content: unknown): string {
 }
 
 describe("SubagentRun model context", () => {
-  it("clears bulky old tool results from the request but keeps the recent ones", async () => {
+  it("retains historical tool results in the request without premature clearing", async () => {
     const { provider, requests } = await fixture();
-    const exchanges = DEFAULT_MICROCOMPACT_KEEP_RECENT + 2;
+    const exchanges = 7;
     const initialMessages: AgentMessage[] = [
       { role: "user", content: "Map the module.", timestamp: 0 } as AgentMessage,
       ...Array.from({ length: exchanges }, (_, index) => readExchange(index + 1)).flat(),
@@ -104,14 +100,11 @@ describe("SubagentRun model context", () => {
       .filter((message) => message.role === "tool")
       .map((message) => text(message.content));
     expect(toolResults).toHaveLength(exchanges);
-    expect(toolResults.slice(0, 2)).toEqual([
-      MICROCOMPACT_CLEARED_TOOL_RESULT,
-      MICROCOMPACT_CLEARED_TOOL_RESULT,
-    ]);
-    toolResults.slice(2).forEach((result, offset) => {
-      expect(result).toContain(`contents of file ${offset + 3}`);
+    // All tool results must be retained intact to preserve the subagent's working memory
+    toolResults.forEach((resultText, offset) => {
+      expect(resultText).toContain(`contents of file ${offset + 1}`);
     });
-    // The call arguments survive, so the model still knows what it read.
+    // The call arguments survive as well
     expect(JSON.stringify(requests[0].messages)).toContain("src/file-1.ts");
   });
 
@@ -119,7 +112,7 @@ describe("SubagentRun model context", () => {
     const { provider } = await fixture();
     const initialMessages: AgentMessage[] = [
       { role: "user", content: "Map the module.", timestamp: 0 } as AgentMessage,
-      ...Array.from({ length: DEFAULT_MICROCOMPACT_KEEP_RECENT + 2 }, (_, index) => readExchange(index + 1)).flat(),
+      ...Array.from({ length: 7 }, (_, index) => readExchange(index + 1)).flat(),
     ];
     const run = new SubagentRun({
       definition: { name: "researcher", description: "Fixture", tools: ["Read"], prompt: "Report.", source: "builtin" },

@@ -13,7 +13,7 @@
 
 ## Status
 
-- **Current release line:** `1.0.x` (Active stable release: `1.0.7`)
+- **Current release line:** `1.0.x` (Active stable release: `1.0.8`)
 - **License:** Apache License 2.0
 
 ---
@@ -61,7 +61,6 @@ DCode adheres to a strictly defined multi-process architecture with clean owners
 - **Plugin DevKit & Extensibility**: First-class plugin SDK and CLI (`pi-plugin`) supporting custom webview panels, tool contributions, commands, and skills.
 - **Safe Managed Mode & Containment**: Native file tools operate within project folders, `.dcode` state and granted paths. External references named by the user receive session-scoped read access; writes remain restricted. Bash runs with a workspace CWD but is not an OS filesystem sandbox.
 - **Context Capacity & Reasoning Inspector**: Real-time context capacity ring and multi-segment breakdown in the composer toolbar backed entirely by the Agent Runtime backend. Physical schema and prompt character measurement guarantees strict token conservation without rounding drift, provides true visibility for Skills and MCP tool schemas, extracts reasoning/thought tokens (e.g. DeepSeek R1, Claude 3.7 Sonnet, OpenAI o-series), and stabilizes occupancy against cache hit/miss fluctuations.
-- **Silent Microcompact Policy**: Intelligent trimming for historical tool results. Retains the latest tool call outputs while silently replacing older bulky outputs (`ReadFile`, `Bash`, `Grep`, `Glob`) with lightweight placeholders, slashing 50%~80% context tokens locally without requiring an expensive LLM summarization roundtrip.
 - **Plan & Goal Workflow Stage Stepper**: Automatically parses multi-stage execution phases and step checklists from Markdown plans within the approval bar, rendering an interactive pipeline stepper (completed, in-progress, pending) and progress meter.
 - **Modern UI Design System & Typography**: Standardized `--text-ui-*` semantic type ramp and optimized CJK font stack (Microsoft YaHei UI, PingFang SC, Noto Sans CJK) for monospace code and terminal blocks across platforms, eliminating jagged glyphs on Windows.
 - **Local Remote Control Host**: Built-in RACP-WS host service in DCode desktop, enabling secure remote control from mobile devices or other clients across the LAN. Features single-use pairing token minting (`ppt1....`), real-time connected device metrics, and seamless token regeneration from Settings.

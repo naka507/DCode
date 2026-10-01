@@ -61,4 +61,14 @@ describe("custom DeepSeek gateway thinking payload", () => {
     expect(sent).toHaveProperty("reasoning_effort", "none");
     expect(sent).not.toHaveProperty("thinking");
   });
+  it("enables thinking format for custom vendorKey and undefined vendorKey gateways", async () => {
+    expect(await payload("high", { vendorKey: "custom" })).toMatchObject({
+      thinking: { type: "enabled" },
+      reasoning_effort: "high",
+    });
+    expect(await payload("high", { vendorKey: undefined })).toMatchObject({
+      thinking: { type: "enabled" },
+      reasoning_effort: "high",
+    });
+  });
 });
