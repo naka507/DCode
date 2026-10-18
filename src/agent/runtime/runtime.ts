@@ -30,6 +30,12 @@ import {
   type MessageEntry,
   type PrepareNextTurnContext,
 } from "@earendil-works/pi-agent-core";
+// ADR-002 Phase A: builtin tool name lists live in the tool registry module.
+// Behavior-preserving extraction; the runtime still owns the catalog.
+import {
+  AGENT_MODE_BUILTIN_TOOLS,
+  CONTRACT_MODE_BUILTIN_TOOLS,
+} from "../tools/registry.js";
 import {
   isContextOverflow,
   Type,
@@ -3217,22 +3223,12 @@ Delegation rules:
     // the work panel browser), so it ships in every mode. PluginCheck only
     // reads a directory; PluginScaffold and PluginPack write, so they follow
     // Write/Edit/Bash into agent mode only.
+    // ADR-002 Phase A: the per-mode builtin lists come from the tool
+    // registry module (single source of truth for the CI assertions).
     const tools =
       this.mode === "agent"
-        ? [
-            "Read",
-            "Bash",
-            "Edit",
-            "Write",
-            "Glob",
-            "Grep",
-            "BrowserPreview",
-            "PluginCheck",
-          ]
-        : ["Read", "Glob", "Grep", "BrowserPreview", "Bash"];
-    if (this.mode === "agent") {
-      tools.push("PluginScaffold", "PluginPack");
-    }
+        ? [...AGENT_MODE_BUILTIN_TOOLS]
+        : [...CONTRACT_MODE_BUILTIN_TOOLS];
     const builtins = tools.map(exec);
 
     // Plugins contribute Agent tools by default. Plan/Goal modes only
