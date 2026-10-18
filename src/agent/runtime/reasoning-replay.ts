@@ -1,3 +1,4 @@
+import type { AgentMessage, AssistantMessage, Message } from "../pi-adapter/index.js";
 /**
  * Preserve DeepSeek-compatible reasoning across context compaction (#296).
  *
@@ -12,9 +13,6 @@
  * `transformMessages` converts thinking to plain text when the assistant is from
  * a different model, which would drop reasoning_* on the wire.
  */
-
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 
 /** Cap how many pre-compaction thinking turns ride inside the checkpoint. */
 export const MAX_RETAINED_REASONING_TURNS = 3;

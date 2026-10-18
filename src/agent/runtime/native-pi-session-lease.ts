@@ -1,3 +1,4 @@
+import type { SessionManager } from "../pi-adapter/index.js";
 import { createHash, randomUUID } from "node:crypto";
 import {
   closeSync,
@@ -9,7 +10,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { hostname } from "node:os";
-import type { SessionManager } from "@earendil-works/pi-coding-agent";
 
 export type NativePiSnapshot = {
   bytes: Buffer;

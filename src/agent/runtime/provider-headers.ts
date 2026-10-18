@@ -10,8 +10,8 @@
  * and other hop-by-hop or auth keys are rejected so this cannot smash signing.
  */
 
+import type { FetchFunction, ProviderHeaders, SimpleStreamOptions } from "../pi-adapter/index.js";
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { FetchFunction, ProviderHeaders, SimpleStreamOptions } from "@earendil-works/pi-ai";
 
 export const PROVIDER_HEADERS_MAX = 32;
 export const PROVIDER_HEADER_KEY_MAX_BYTES = 256;

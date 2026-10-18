@@ -1,3 +1,4 @@
+import type { AgentMessage } from "../pi-adapter/index.js";
 /**
  * File operations a compaction checkpoint records.
  *
@@ -7,8 +8,6 @@
  * the file list. pi's accumulator still carries the previous checkpoint's
  * lists forward; this adds the paths DCode's own calls touched.
  */
-
-import type { AgentMessage } from "@earendil-works/pi-agent-core";
 
 /** pi's `FileOperations` accumulator, structurally. */
 export type CompactionFileOps = {
