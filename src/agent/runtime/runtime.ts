@@ -747,27 +747,12 @@ function compactionEnabled(value?: Partial<ContextCompactionSettings>): boolean 
  * user cannot judge the trade-off from the UI. It exists so the no-summary
  * family is implemented and reachable, not configurable.
  */
-export type CompactionStrategy = "summary" | "fresh_window";
-
-function resolveCompactionStrategy(
-  option?: CompactionStrategy,
-): CompactionStrategy {
-  if (option) return option;
-  return process.env.DCODE_COMPACTION_STRATEGY === "fresh_window"
-    ? "fresh_window"
-    : "summary";
-}
-
-/**
- * Stands in for the summary a rollover deliberately does not generate. The
- * host rejects an empty checkpoint summary, and a silent placeholder would
- * leave the model guessing why its context changed, so the rollover says so.
- */
-const CONTEXT_ROLLOVER_SUMMARY = [
-  "[context rollover: a new context window was started without summarizing conversation history]",
-  "Earlier messages in this session are not part of this request. The complete transcript is still available to the user, and the environment is unchanged.",
-  "Ask before assuming anything about work that is not visible here.",
-].join("\n\n");
+export type { CompactionStrategyName as CompactionStrategy } from "./compaction-strategies.js";
+import type { CompactionStrategyName as CompactionStrategy } from "./compaction-strategies.js";
+import {
+  getCompactionStrategy,
+  resolveCompactionStrategyName,
+} from "./compaction-strategies.js";
 
 /**
  * Codex's model-facing compaction tool: no parameters, and the description is
@@ -785,13 +770,6 @@ const CONTEXT_COMPACTION_TOOL_NAME = "new_context";
 const CONTEXT_COMPACTION_TOOL_DESCRIPTION =
   "Start a new context window. Does not clear, reset, or otherwise affect environment state.";
 /** Codex's `NEW_CONTEXT_WINDOW_MESSAGE`, one per family. */
-const CONTEXT_COMPACTION_TOOL_REPLY: Record<CompactionStrategy, string> = {
-  fresh_window:
-    "A new context window will start without summarizing conversation history.",
-  summary:
-    "A new context window will start with a summary of the conversation history.",
-};
-
 /**
  * Two-tier budget reminder, matching Codex's `TokenBudgetReminder` and
  * `AutoCompactFallbackPrompt`. Codex reads both thresholds and both texts from
@@ -831,7 +809,7 @@ function contextFallbackReminder(): string {
  * issued while the context is at or above it. Compaction happens inline at that
  * boundary, the way Codex does it — there is no off-critical-path variant.
  */
-type ContextBudget = {
+export type ContextBudget = {
   /** Estimated tokens in the reconstructed model context. */
   tokens: number;
   /** Point where an uncompacted provider request is no longer allowed. */
@@ -1001,7 +979,7 @@ function isPatchCommand(command: unknown): boolean {
 
 type CheckpointPersistResult = "persisted" | "oversized" | "failed";
 
-type CompactionRetentionMode = "active_turn" | "completed_turn";
+export type CompactionRetentionMode = "active_turn" | "completed_turn";
 
 /**
  * A pi preparation plus the anchor the checkpoint is filed against.
@@ -1013,11 +991,11 @@ type CompactionRetentionMode = "active_turn" | "completed_turn";
  * on `compaction_end` — so the Codex-shaped reshape below carries it alongside
  * pi's fields.
  */
-type ShapedPreparation = CompactionPreparation & {
+export type ShapedPreparation = CompactionPreparation & {
   firstKeptEntryId?: string;
 };
 
-type CheckpointBuildSuccess = {
+export type CheckpointBuildSuccess = {
   ok: true;
   checkpoint: ContextCompactionRecord;
   entries: Entry[];
@@ -1025,7 +1003,7 @@ type CheckpointBuildSuccess = {
   preparation: ShapedPreparation;
 };
 
-type CheckpointBuildFailure = {
+export type CheckpointBuildFailure = {
   ok: false;
   entries: Entry[];
   budget: ContextBudget;
@@ -1040,7 +1018,7 @@ type CheckpointBuildFailure = {
   recoverable: boolean;
 };
 
-type CheckpointBuild = CheckpointBuildSuccess | CheckpointBuildFailure;
+export type CheckpointBuild = CheckpointBuildSuccess | CheckpointBuildFailure;
 
 function compactionRetentionMode(details: unknown): CompactionRetentionMode {
   // Checkpoints written before the task-boundary fix did not record whether
@@ -1738,7 +1716,7 @@ export class DesktopAgentRuntime {
     this.projectInstructions = opts.projectInstructions;
     this.projectMemory = opts.projectMemory?.trim() || undefined;
     this.compactionEnabled = compactionEnabled(opts.compactionSettings);
-    this.compactionStrategy = resolveCompactionStrategy(opts.compactionStrategy);
+    this.compactionStrategy = resolveCompactionStrategyName(opts.compactionStrategy);
 
     this.rebuildToolCatalog();
     const model = buildProviderModel(this.provider);
@@ -5295,11 +5273,15 @@ Delegation rules:
       parameters: Type.Object({}),
       execute: async () => {
         this.pendingModelCompaction = true;
+        // ADR-004: the model-facing reply comes from the strategy def.
+        const toolReply =
+          getCompactionStrategy(this.compactionStrategy)?.toolReply ??
+          "A new context window will start.";
         return {
           content: [
             {
               type: "text",
-              text: CONTEXT_COMPACTION_TOOL_REPLY[this.compactionStrategy],
+              text: toolReply,
             },
           ],
           details: { queued: true },
@@ -6514,126 +6496,37 @@ Delegation rules:
       };
     }
 
-    if (this.compactionStrategy === "fresh_window") {
-      return this.buildRolloverCheckpoint(entries, budget, preparation.value);
-    }
-
-    const summaryInput = this.fitSummaryInputToBudget(preparation.value, budget);
-    if (!summaryInput) {
+    // ADR-004: strategy dispatch via the registry. Unknown names fail
+    // loudly instead of silently falling back.
+    const strategy = getCompactionStrategy(this.compactionStrategy);
+    if (!strategy) {
       return {
         ok: false,
         entries,
         budget,
         preparation: preparation.value,
         tokensBefore: preparation.value.tokensBefore,
-        message: "Compaction summary input exceeds the safe model budget",
-        recoverable: true,
-      };
-    }
-
-    let result: Awaited<ReturnType<typeof compact>>;
-    try {
-      result = await this.generateCompaction(summaryInput, signal);
-    } catch (error) {
-      return {
-        ok: false,
-        entries,
-        budget,
-        preparation: preparation.value,
-        tokensBefore: preparation.value.tokensBefore,
-        message: error instanceof Error ? error.message : String(error),
-        recoverable: !signal.aborted,
-      };
-    }
-    if (!result.ok) {
-      return {
-        ok: false,
-        entries,
-        budget,
-        preparation: preparation.value,
-        tokensBefore: preparation.value.tokensBefore,
-        message: result.error.message,
-        recoverable: result.error.code !== "aborted",
-      };
-    }
-
-    const throughMessageId = this.fullEntries.at(-1)?.id;
-    if (!throughMessageId) {
-      return {
-        ok: false,
-        entries,
-        budget,
-        preparation: preparation.value,
-        tokensBefore: result.value.tokensBefore,
-        message: "Compaction has no durable transcript boundary",
+        message: `Unknown compaction strategy "${this.compactionStrategy}"`,
         recoverable: false,
       };
     }
-    return {
-      ok: true,
+    return strategy.build({
       entries,
       budget,
       preparation: preparation.value,
-      checkpoint: this.createCheckpoint(
-        preparation.value,
-        throughMessageId,
-        result.value.summary,
-        result.value.usage,
-        {
-          ...(isRecord(result.value.details) ? result.value.details : {}),
-          strategy: "summary" satisfies CompactionStrategy,
-          retainedTailMode: retentionMode,
-          ...this.retainedReasoningForCheckpoint(preparation.value),
-        },
-      ),
-    };
+      signal,
+      retentionMode,
+      fullEntries: this.fullEntries,
+      fitSummaryInputToBudget: (p, b) => this.fitSummaryInputToBudget(p, b),
+      generateCompaction: (p, s) => this.generateCompaction(p, s),
+      createCheckpoint: (p, id, summary, usage, details) =>
+        this.createCheckpoint(p, id, summary, usage, details),
+      checkpointDetails: (p) => this.checkpointDetails(p),
+      retainedReasoningForCheckpoint: (p) =>
+        this.retainedReasoningForCheckpoint(p),
+    });
   }
 
-  /**
-   * Roll the context over without summarizing it, the way Codex's token-budget
-   * compaction does. No model request, so nothing here can fail on the provider
-   * and the ADR 0049 summary fallback has nothing to catch. The rest of the
-   * lifecycle is shared with the summary family: this still produces a durable
-   * checkpoint, a `compaction_end`, and everything the user sees.
-   */
-  private buildRolloverCheckpoint(
-    entries: Entry[],
-    budget: ContextBudget,
-    preparation: ShapedPreparation,
-  ): CheckpointBuild {
-    const throughMessageId = this.fullEntries.at(-1)?.id;
-    if (!throughMessageId) {
-      return {
-        ok: false,
-        entries,
-        budget,
-        preparation,
-        tokensBefore: preparation.tokensBefore,
-        message: "Compaction has no durable transcript boundary",
-        recoverable: false,
-      };
-    }
-    // Codex clears history outright. Retaining nothing is the point of this
-    // family: it buys the whole window back instead of a summary's worth.
-    const rollover: ShapedPreparation = { ...preparation, retainedTail: [] };
-    return {
-      ok: true,
-      entries,
-      budget,
-      preparation: rollover,
-      checkpoint: this.createCheckpoint(
-        rollover,
-        throughMessageId,
-        CONTEXT_ROLLOVER_SUMMARY,
-        undefined,
-        {
-          ...this.checkpointDetails(rollover),
-          strategy: "fresh_window" satisfies CompactionStrategy,
-          retainedTailMode: "completed_turn" satisfies CompactionRetentionMode,
-        },
-      ),
-    };
-  }
 
   /**
    * Install an already-generated checkpoint on the blocking path. The budget
