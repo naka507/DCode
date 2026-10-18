@@ -393,6 +393,7 @@ const MAX_TASKWAIT_RESULT_CHARS = 50_000;
 
 export type DelegationStatus =
   | "running"
+  | "waiting"
   | SubagentRunStatus
   | "stopped";
 
@@ -436,6 +437,8 @@ export type DelegationRecord = {
   delegateSessionId: string;
   /** Prior `delegationId` this run continues, when `Task.resume` was set. */
   resumedFrom?: string;
+  /** ADR-003: `delegationId`s this delegation waits for before starting. */
+  dependsOn?: string[];
   /** Model the run kept before the resume could not re-resolve it (ADR 0279
    * §4): recorded so the parent can see that the delegate's binding moved. */
   modelChangedFrom?: string;
@@ -1716,6 +1719,9 @@ export class DesktopAgentRuntime {
   // host doesn't serve it); buildToolDefinitions() falls back to the
   // static descriptions/schemas below.
   private dcoreToolManifest: DCoreManifestTool[] | null = null;
+  // ADR-003: deferred starters for delegations waiting on `dependsOn`.
+  // Keyed by delegationId; removed when the delegation starts or fails.
+  private waitingStarts = new Map<string, () => void>();
   private compactionAbort?: AbortController;
   private compactionInProgress = false;
   /** The in-flight checkpoint was cut short by Stop/dispose, not by a failure. */
@@ -4033,6 +4039,7 @@ Delegation rules:
         "`task` is the delegate's only instruction. It cannot see this conversation, and you cannot correct it while it runs, so state the goal, the paths and facts it cannot infer, and exactly what to report back.",
         "To run delegates concurrently, emit several Task calls in one assistant message. A message that mixes Task with any other tool runs one call at a time. You may keep working or talk to the user while they run; the runtime delivers their reports when they finish. Call TaskStop only to cancel.",
         "To continue a previous subagent, pass its `resume` id (the `delegationId` returned by Task); `agent` may then be omitted, because the delegation already names its subagent. Saying \"reuse\" in prose is not enough. Do not pass `model` when resuming; start a new delegation to change models.",
+        "To sequence work, pass `dependsOn` with the delegationIds of earlier Tasks whose results this one needs. The delegate waits — without consuming a concurrency slot — until every dependency completes successfully, then starts with their reports prepended to its brief. A failed or stopped dependency fails the waiting delegation instead of starting it. Do not use `dependsOn` for independent work; emit those Tasks together so they run in parallel.",
         `Available subagents:\n${catalog}`,
       ].join("\n\n"),
       parameters: Type.Object({
@@ -4061,6 +4068,12 @@ Delegation rules:
           Type.String({
             description:
               "delegationId of a settled subagent in this conversation to continue. Omit to start a new session.",
+          }),
+        ),
+        dependsOn: Type.Optional(
+          Type.Array(Type.String(), {
+            description:
+              "delegationIds this delegate waits for before starting. Use when the work needs their findings: the delegate starts only after every listed delegation completes successfully, with their reports prepended to its brief. A failed or stopped dependency fails this delegation instead of starting it. Omit for independent work.",
           }),
         ),
       }),
@@ -4181,12 +4194,51 @@ Delegation rules:
           );
         }
         const startedAt = Date.now();
-        const running = this.runningDelegations().length;
-        if (running >= MAX_SUBAGENT_CONCURRENCY) {
+        // ADR-003: dependency graph. Edges point from newer delegations to
+        // older ones, so cycles are impossible by construction.
+        const dependsOn =
+          isRecord(params) && Array.isArray(params.dependsOn)
+            ? [
+                ...new Set(
+                  params.dependsOn
+                    .map((id) => String(id).trim())
+                    .filter(Boolean),
+                ),
+              ]
+            : [];
+        for (const depId of dependsOn) {
+          if (!this.delegations.has(depId)) {
+            return this.subagentToolError(
+              toolCallId,
+              `Unknown dependency "${depId}" in \`dependsOn\`. Only delegationIds returned by earlier Task calls in this session can be dependencies.`,
+            );
+          }
+        }
+        const depStatus = (depId: string) => this.delegations.get(depId)!.status;
+        const failedDep = dependsOn.find((depId) => {
+          const status = depStatus(depId);
+          return status !== "running" && status !== "waiting" && status !== "completed";
+        });
+        if (failedDep) {
           return this.subagentToolError(
             toolCallId,
-            `${MAX_SUBAGENT_CONCURRENCY} subagents are already running for this session. Wait for some with TaskWait or stop them with TaskStop before delegating more.`,
+            `Not delegating: dependency ${failedDep} already ${depStatus(failedDep)}. Start a new delegation without it, or fix the dependency first.`,
           );
+        }
+        const waitingOn = dependsOn.filter((depId) => {
+          const status = depStatus(depId);
+          return status === "running" || status === "waiting";
+        });
+        // A waiting delegation consumes no concurrency slot; the limit below
+        // only gates delegates that start right now.
+        if (waitingOn.length === 0) {
+          const running = this.runningDelegations().length;
+          if (running >= MAX_SUBAGENT_CONCURRENCY) {
+            return this.subagentToolError(
+              toolCallId,
+              `${MAX_SUBAGENT_CONCURRENCY} subagents are already running for this session. Wait for some with TaskWait or stop them with TaskStop before delegating more.`,
+            );
+          }
         }
         // The delegate runs in the background (ADR 0089): `Task` returns
         // immediately with a delegation id, and TaskWait converges later.
@@ -4226,133 +4278,47 @@ Delegation rules:
             this.noHistoryResumeMessage(resume),
           );
         }
-        const delegationId = randomUUID();
-        const controller = new AbortController();
-        const thinkingLevel: SubagentThinkingLevel =
-          definition.thinkingLevel === "omit"
-            ? "omit"
-            : clampThinkingLevel(
-                provider,
-                definition.thinkingLevel ?? this.thinkingLevel,
-              );
-        // Only TaskStop, user Stop, dispose, and a parent fatal error abort a
-        // delegate (D328 / D352). The Task tool call returns immediately; tying
-        // the background run to that call's signal would kill it when the parent
-        // loop idled.
-        const abortSignal = controller.signal;
-        let resolveCompletion: () => void = () => {};
-        const completion = new Promise<void>((resolve) => {
-          resolveCompletion = resolve;
-        });
-        const objective =
-          isRecord(params) && typeof params.description === "string"
-            ? params.description.trim()
-            : task;
-        const providerKey = this.delegationModelKeyFor(provider);
-        const chain = this.delegationChains.start({
-          delegateSessionId: resumedChain?.delegateSessionId ?? delegationId,
-          delegationId,
-          toolCallId,
-          agentName: definition.name,
-          originalTask: resumedChain?.originalTask ?? task,
-          objective,
-          latestModelId: provider.modelId,
-          ...(providerKey ? { latestModelKey: providerKey } : {}),
-          resumedFrom: resumedChain,
-        });
-        const record: DelegationRecord = {
-          delegationId,
-          taskTurnId: this.turnId,
-          agentName: definition.name,
-          modelId: provider.modelId,
-          thinkingLevel,
-          status: "running",
-          startedAt,
-          completion,
-          resolveCompletion,
-          abort: () => controller.abort(),
-          stopRequested: false,
-          turns: 0,
-          toolCalls: 0,
-          lastActivityAt: startedAt,
-          lastPhase: "waiting-model",
-          startedEpoch: this.turnEpoch,
-          reportDelivered: false,
-          delegateSessionId: chain.delegateSessionId,
-          ...(resumedChain ? { resumedFrom: resume } : {}),
-          ...(modelChangedFrom ? { modelChangedFrom } : {}),
-        };
-        this.delegations.set(delegationId, record);
-        const scopedTools = this.scopeDelegateTools(tools, definition);
-        new SubagentRun({
-          definition,
-          sessionId: this.sessionId,
-          turnId: this.turnId,
-          parentToolCallId: toolCallId,
-          task,
-          provider,
-          thinkingLevel,
-          fallbackModels: (definition.fallbackModels ?? []).map((pin) => ({
-            key: subagentModelKey(pin),
-            provider: this.subagentProviders[subagentModelKey(pin)],
-          })),
-          inheritedThinkingLevel: this.thinkingLevel,
-          onModelChange: (next, level) => {
-            record.modelId = next.modelId;
-            record.thinkingLevel = level;
-            this.delegationChains.retarget(record.delegateSessionId, {
-              modelKey: this.delegationModelKeyFor(next),
-              modelId: next.modelId,
-            });
-            this.publishDelegationSettlement(record);
-          },
-          onProviderRetry: (retry) =>
-            this.noteDelegationProviderRetry(record, retry),
-          systemPrompt: composeSubagentSystemPrompt({
-            definition,
-            guidance: this.subagentGuidance(definition),
-            toolNames: declaredToolNames,
-          }),
-          tools: scopedTools,
-          onEvent: (envelope) => {
-            this.noteDelegationActivity(record, envelope);
-            this.onEvent(envelope);
-          },
-          // A host failure inside a delegate reaches its tool-error channel
-          // through the same bookkeeping the parent uses.
-          resolveToolOutcome: (context) => this.resolveOwnToolOutcome(context),
-          signal: abortSignal,
-          // A resumed run replays its chain before this turn's `task` (ADR 0276).
-          ...(initialMessages ? { initialMessages } : {}),
-        })
-          .run()
-          .then(
-            (result) => this.settleDelegation(record, result),
-            // SubagentRun.run() settles its own errors into results; this
-            // guard only keeps an unexpected rejection from leaving the
-            // delegation stuck in "running" forever.
-            (error: unknown) => {
-              this.settleDelegation(record, {
-                agentName: definition.name,
-                modelId: provider.modelId,
-                thinkingLevel,
-                status: "failed",
-                report: "",
-                turns: 0,
-                toolCalls: 0,
-                error: {
-                  code: "UNEXPECTED_DELEGATION_REJECTION",
-                  message:
-                    error instanceof Error ? error.message : "unknown error",
-                },
-              });
-            },
-          );
-
         const label =
           isRecord(params) && typeof params.description === "string"
             ? params.description.trim()
             : "";
+        const { delegationId, record } = this.beginDelegation({
+          toolCallId,
+          definition,
+          provider,
+          task,
+          resume,
+          resumedChain,
+          modelChangedFrom,
+          initialMessages,
+          tools,
+          declaredToolNames,
+          dependsOn,
+          startedAt,
+          label,
+          deferred: waitingOn.length > 0,
+        });
+        if (waitingOn.length > 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Delegation ${delegationId} is waiting for ${waitingOn.length} dependenc${waitingOn.length === 1 ? "y" : "ies"} (${waitingOn.join(", ")}). It starts automatically once they complete successfully, with their reports prepended to its brief. Call TaskWait with this delegationId to converge, or TaskStop to cancel the wait.`,
+              },
+            ],
+            details: {
+              delegationId,
+              agent: definition.name,
+              status: "waiting" as const,
+              startedAt,
+              modelId: provider.modelId,
+              thinkingLevel: record.thinkingLevel,
+              dependsOn,
+              ...(resumedChain ? { resumedFrom: resume } : {}),
+            },
+          };
+        }
+
         return {
           content: [
             {
@@ -4366,12 +4332,283 @@ Delegation rules:
             status: "running",
             startedAt,
             modelId: provider.modelId,
-            thinkingLevel,
+            thinkingLevel: record.thinkingLevel,
             ...(resumedChain ? { resumedFrom: resume } : {}),
           },
         };
       },
     };
+  }
+
+  /**
+   * ADR-003: create the delegation record + chain, and start its
+   * SubagentRun — unless `deferred`, in which case the record registers
+   * with status "waiting" and a starter is parked in `waitingStarts` for
+   * `releaseWaitingDelegations` to invoke when dependencies settle.
+   */
+  private beginDelegation(input: {
+    toolCallId: string;
+    definition: SubagentDefinition;
+    provider: RuntimeProviderConfig;
+    task: string;
+    resume: string;
+    resumedChain?: DelegationChain;
+    modelChangedFrom?: string;
+    initialMessages?: AgentMessage[];
+    tools: AgentTool[];
+    declaredToolNames: string[];
+    dependsOn: string[];
+    startedAt: number;
+    label: string;
+    deferred: boolean;
+  }): { delegationId: string; record: DelegationRecord } {
+    const {
+      toolCallId,
+      definition,
+      provider,
+      task,
+      resume,
+      resumedChain,
+      modelChangedFrom,
+      initialMessages,
+      tools,
+      declaredToolNames,
+      dependsOn,
+      startedAt,
+      label,
+      deferred,
+    } = input;
+    const delegationId = randomUUID();
+    const controller = new AbortController();
+    const thinkingLevel: SubagentThinkingLevel =
+      definition.thinkingLevel === "omit"
+        ? "omit"
+        : clampThinkingLevel(
+            provider,
+            definition.thinkingLevel ?? this.thinkingLevel,
+          );
+    // Only TaskStop, user Stop, dispose, and a parent fatal error abort a
+    // delegate (D328 / D352). The Task tool call returns immediately; tying
+    // the background run to that call's signal would kill it when the parent
+    // loop idled.
+    const abortSignal = controller.signal;
+    let resolveCompletion: () => void = () => {};
+    const completion = new Promise<void>((resolve) => {
+      resolveCompletion = resolve;
+    });
+    const objective = label || task;
+    const providerKey = this.delegationModelKeyFor(provider);
+    const chain = this.delegationChains.start({
+      delegateSessionId: resumedChain?.delegateSessionId ?? delegationId,
+      delegationId,
+      toolCallId,
+      agentName: definition.name,
+      originalTask: resumedChain?.originalTask ?? task,
+      objective,
+      latestModelId: provider.modelId,
+      ...(providerKey ? { latestModelKey: providerKey } : {}),
+      resumedFrom: resumedChain,
+    });
+    const record: DelegationRecord = {
+      delegationId,
+      taskTurnId: this.turnId,
+      agentName: definition.name,
+      modelId: provider.modelId,
+      thinkingLevel,
+      status: deferred ? "waiting" : "running",
+      startedAt,
+      completion,
+      resolveCompletion,
+      abort: () => {
+        // A waiting delegation has no run yet; stopping fails it fast.
+        if (record.status === "waiting") {
+          this.failWaitingDelegation(
+            record,
+            "Stopped before its dependencies settled.",
+          );
+        } else {
+          controller.abort();
+        }
+      },
+      stopRequested: false,
+      turns: 0,
+      toolCalls: 0,
+      lastActivityAt: startedAt,
+      lastPhase: "waiting-model",
+      startedEpoch: this.turnEpoch,
+      reportDelivered: false,
+      delegateSessionId: chain.delegateSessionId,
+      ...(resumedChain ? { resumedFrom: resume } : {}),
+      ...(modelChangedFrom ? { modelChangedFrom } : {}),
+      ...(dependsOn.length > 0 ? { dependsOn } : {}),
+    };
+    this.delegations.set(delegationId, record);
+
+    const runSubagent = () => {
+      const scopedTools = this.scopeDelegateTools(tools, definition);
+      new SubagentRun({
+        definition,
+        sessionId: this.sessionId,
+        turnId: this.turnId,
+        parentToolCallId: toolCallId,
+        task: this.withUpstreamReports(task, dependsOn),
+        provider,
+        thinkingLevel,
+        fallbackModels: (definition.fallbackModels ?? []).map((pin) => ({
+          key: subagentModelKey(pin),
+          provider: this.subagentProviders[subagentModelKey(pin)],
+        })),
+        inheritedThinkingLevel: this.thinkingLevel,
+        onModelChange: (next, level) => {
+          record.modelId = next.modelId;
+          record.thinkingLevel = level;
+          this.delegationChains.retarget(record.delegateSessionId, {
+            modelKey: this.delegationModelKeyFor(next),
+            modelId: next.modelId,
+          });
+          this.publishDelegationSettlement(record);
+        },
+        onProviderRetry: (retry) =>
+          this.noteDelegationProviderRetry(record, retry),
+        systemPrompt: composeSubagentSystemPrompt({
+          definition,
+          guidance: this.subagentGuidance(definition),
+          toolNames: declaredToolNames,
+        }),
+        tools: scopedTools,
+        onEvent: (envelope) => {
+          this.noteDelegationActivity(record, envelope);
+          this.onEvent(envelope);
+        },
+        // A host failure inside a delegate reaches its tool-error channel
+        // through the same bookkeeping the parent uses.
+        resolveToolOutcome: (context) => this.resolveOwnToolOutcome(context),
+        signal: abortSignal,
+        // A resumed run replays its chain before this turn's `task` (ADR 0276).
+        ...(initialMessages ? { initialMessages } : {}),
+      })
+        .run()
+        .then(
+          (result) => this.settleDelegation(record, result),
+          // SubagentRun.run() settles its own errors into results; this
+          // guard only keeps an unexpected rejection from leaving the
+          // delegation stuck in "running" forever.
+          (error: unknown) => {
+            this.settleDelegation(record, {
+              agentName: definition.name,
+              modelId: provider.modelId,
+              thinkingLevel,
+              status: "failed",
+              report: "",
+              turns: 0,
+              toolCalls: 0,
+              error: {
+                code: "UNEXPECTED_DELEGATION_REJECTION",
+                message:
+                  error instanceof Error ? error.message : "unknown error",
+              },
+            });
+          },
+        );
+    };
+
+    if (deferred) {
+      this.waitingStarts.set(delegationId, () => {
+        if (record.status !== "waiting") return;
+        // Concurrency gate at start time: a released waiter that finds all
+        // slots busy keeps waiting; the next settle re-pumps.
+        if (this.runningDelegations().length >= MAX_SUBAGENT_CONCURRENCY) return;
+        record.status = "running";
+        record.lastPhase = "waiting-model";
+        record.lastActivityAt = Date.now();
+        runSubagent();
+      });
+    } else {
+      runSubagent();
+    }
+    return { delegationId, record };
+  }
+
+  /**
+   * ADR-003: prepend settled dependency reports to a waiter's brief so the
+   * delegate starts with its dependencies' findings in context. Immediate
+   * delegations whose dependencies already completed get the same treatment.
+   */
+  private withUpstreamReports(task: string, dependsOn: string[]): string {
+    if (dependsOn.length === 0) return task;
+    const sections = dependsOn.map((depId) => {
+      const dep = this.delegations.get(depId);
+      const header = `--- upstream delegation ${depId} (${dep?.agentName ?? "unknown"}, ${dep?.status ?? "unknown"}) ---`;
+      const report = dep?.result?.report?.trim() || "(no report)";
+      return `${header}\n${report}`;
+    });
+    return `[Upstream results — read these before starting; your task builds on them:]\n${sections.join("\n")}\n\n[Your task:]\n${task}`;
+  }
+
+  /**
+   * ADR-003: pump delegations waiting on `dependsOn`. Called after every
+   * settle; a waiter whose dependencies all completed starts, one with a
+   * failed/stopped dependency fails fast, and the rest keep waiting.
+   */
+  private releaseWaitingDelegations(): void {
+    for (const [delegationId, start] of [...this.waitingStarts]) {
+      const record = this.delegations.get(delegationId);
+      if (!record || record.status !== "waiting") {
+        this.waitingStarts.delete(delegationId);
+        continue;
+      }
+      const dependsOn = record.dependsOn ?? [];
+      const failedDep = dependsOn
+        .map((id) => this.delegations.get(id))
+        .find(
+          (dep) =>
+            dep &&
+            dep.status !== "running" &&
+            dep.status !== "waiting" &&
+            dep.status !== "completed",
+        );
+      if (failedDep) {
+        this.failWaitingDelegation(
+          record,
+          `Not started: dependency ${failedDep.delegationId} ${failedDep.status}.`,
+        );
+        continue;
+      }
+      const ready = dependsOn.every(
+        (id) => this.delegations.get(id)?.status === "completed",
+      );
+      if (!ready) continue;
+      this.waitingStarts.delete(delegationId);
+      start();
+    }
+  }
+
+  /**
+   * ADR-003: settle a waiting delegation as failed without ever starting it.
+   * Resolves its completion promise so TaskWait converges, and re-pumps in
+   * case the failure cascades to other waiters.
+   */
+  private failWaitingDelegation(record: DelegationRecord, reason: string): void {
+    if (record.status !== "waiting") return;
+    this.waitingStarts.delete(record.delegationId);
+    record.status = "failed";
+    record.completedAt = Date.now();
+    record.result = {
+      agentName: record.agentName,
+      modelId: record.modelId,
+      thinkingLevel: record.thinkingLevel,
+      status: "failed",
+      report: reason,
+      turns: 0,
+      toolCalls: 0,
+    };
+    this.delegationChains.settle(record.delegateSessionId, "failed");
+    this.publishDelegationSettlement(record);
+    record.resolveCompletion();
+    this.refreshDelegationWait();
+    this.refreshResumablePrompt();
+    this.pruneFinishedDelegations();
+    this.releaseWaitingDelegations();
   }
 
   /** Wrap a delegate's tools so each call carries the definition's permission
@@ -4424,6 +4661,8 @@ Delegation rules:
     this.refreshDelegationWait();
     this.refreshResumablePrompt();
     this.pruneFinishedDelegations();
+    // ADR-003: a settle may unblock delegations waiting on `dependsOn`.
+    this.releaseWaitingDelegations();
   }
 
   private publishDelegationSettlement(record: DelegationRecord): void {
@@ -4441,10 +4680,11 @@ Delegation rules:
   }
 
   /** Cap retained history so a long session cannot grow the registry forever.
-   * Finished records are dropped oldest-first; running ones never are. */
+   * Finished records are dropped oldest-first; running and waiting ones
+   * never are. */
   private pruneFinishedDelegations(): void {
     const finished = [...this.delegations.values()]
-      .filter((record) => record.status !== "running")
+      .filter((record) => record.status !== "running" && record.status !== "waiting")
       .sort((left, right) => (left.completedAt ?? 0) - (right.completedAt ?? 0));
     const excess = finished.length - MAX_RETAINED_DELEGATIONS;
     for (const record of finished.slice(0, Math.max(0, excess))) {
