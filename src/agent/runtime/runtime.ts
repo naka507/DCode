@@ -3,7 +3,11 @@ import {
   settledDelegationMessage,
   taskMessageSnapshot,
 } from "./delegation-message.js";
-import { InMemoryTurnEventSink, TurnStateMachine } from "../turn/index.js";
+import {
+  DCoreTurnEventSink,
+  InMemoryTurnEventSink,
+  TurnStateMachine,
+} from "../turn/index.js";
 import {
   Agent,
   BACKGROUND_CONTEXT,
@@ -1674,6 +1678,12 @@ export class DesktopAgentRuntime {
   // happened and never alters runtime behavior.
   private turnTracker: TurnStateMachine | undefined;
   private readonly turnEventSink = new InMemoryTurnEventSink();
+  // ADR-001 Phase B: persist turn events to DCore's turn_events table. The
+  // transport closure is lazy, so referencing this.host here is safe — it
+  // only runs at event time, long after construction.
+  private readonly dcoreTurnEventSink = new DCoreTurnEventSink({
+    call: (method, params) => this.host.call(method, params),
+  });
   private compactionAbort?: AbortController;
   private compactionInProgress = false;
   /** The in-flight checkpoint was cut short by Stop/dispose, not by a failure. */
@@ -7439,7 +7449,7 @@ Delegation rules:
     this.turnTracker = new TurnStateMachine({
       turnId: durableTurnId,
       sessionId: this.sessionId,
-      sinks: [this.turnEventSink],
+      sinks: [this.turnEventSink, this.dcoreTurnEventSink],
     });
     this.turnTracker.begin();
     try {
@@ -7571,7 +7581,7 @@ Delegation rules:
     this.turnTracker = new TurnStateMachine({
       turnId: nextTurnId,
       sessionId: this.sessionId,
-      sinks: [this.turnEventSink],
+      sinks: [this.turnEventSink, this.dcoreTurnEventSink],
     });
     this.turnTracker.begin();
     this.acceptingSteering = true;
