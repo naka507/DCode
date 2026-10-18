@@ -41,6 +41,12 @@ import {
   CONTRACT_MODE_BUILTIN_TOOLS,
 } from "../tools/registry.js";
 import {
+  DCORE_MANIFEST_TOOL_NAMES,
+  manifestParametersToProperties,
+  parseDCoreManifest,
+  type DCoreManifestTool,
+} from "../tools/dcore-manifest.js";
+import {
   isContextOverflow,
   Type,
   type Api,
@@ -50,6 +56,7 @@ import {
   type Models,
   type SimpleStreamOptions,
   type ToolResultMessage,
+  type TSchema,
   type Usage,
   type UserMessage,
 } from "@earendil-works/pi-ai";
@@ -1180,6 +1187,20 @@ function aliasParam(canonical: string) {
   );
 }
 
+/** DCode-side Bash timeout parameter (D273/D329); also applied on top of the manifest schema. */
+function bashTimeoutParam() {
+  return Type.Optional(
+    Type.Number({
+      minimum: MIN_COMMAND_TIMEOUT_SECONDS,
+      // Models routinely send milliseconds; a wider schema bound lets the
+      // runtime read the intent instead of burning the turn (D273 / D329).
+      maximum: MAX_ACCEPTED_COMMAND_TIMEOUT,
+      description:
+        `Optional command timeout in seconds from 1 to ${MAX_COMMAND_TIMEOUT_SECONDS}; defaults to 60 seconds.`,
+    }),
+  );
+}
+
 /**
  * Fails a call that named neither the canonical argument nor its alias. Without
  * this the now-optional canonical argument would reach the host as `undefined`
@@ -1690,6 +1711,11 @@ export class DesktopAgentRuntime {
   private readonly dcoreTurnEventSink = new DCoreTurnEventSink({
     call: (method, params) => this.host.call(method, params),
   });
+  // ADR-002 Phase B: DCore tool manifest from `tools.describe`, fetched
+  // once via refreshDCoreToolManifest(). Null until fetched (or when the
+  // host doesn't serve it); buildToolDefinitions() falls back to the
+  // static descriptions/schemas below.
+  private dcoreToolManifest: DCoreManifestTool[] | null = null;
   private compactionAbort?: AbortController;
   private compactionInProgress = false;
   /** The in-flight checkpoint was cut short by Stop/dispose, not by a failure. */
@@ -2302,6 +2328,28 @@ Delegation rules:
    * after construction; a failing entry is reported through diagnostics and
    * never fails the session.
    */
+  /**
+   * ADR-002 Phase B: fetch the DCore tool manifest (`tools.describe`) and
+   * rebuild the tool catalog from it. Best-effort: when the host doesn't
+   * serve the method (older DCore) or the payload is malformed, the static
+   * definitions stay in place and the agent keeps working.
+   */
+  async refreshDCoreToolManifest(): Promise<void> {
+    if (this.disposed) return;
+    try {
+      const result = await this.host.call<{ tools?: unknown }>("tools.describe", {});
+      const manifest = parseDCoreManifest(result?.tools);
+      if (!manifest || this.disposed) return;
+      this.dcoreToolManifest = manifest;
+      this.rebuildToolCatalog();
+    } catch (error) {
+      console.warn(
+        "[dcore-manifest] tools.describe unavailable, using static tool definitions:",
+        error,
+      );
+    }
+  }
+
   async loadTrustedExtensions(): Promise<void> {
     if (this.disposed || this.extensionRunner || this.trustedExtensionSpecs.length === 0) return;
     const runner = new TrustedExtensionRunner({
@@ -2736,43 +2784,91 @@ Delegation rules:
       : "";
     const externalPathHint =
       " An explicit path outside the workspace and session scratch roots requires permission unless the effective mode is Auto.";
+    // ADR-002 Phase B: DCore tool descriptions/schemas come from the
+    // tools.describe manifest when available. The switch + parameters
+    // record below remain as the fallback for older hosts.
+    const manifestByName = new Map(
+      (this.dcoreToolManifest ?? []).map((entry) => [entry.name, entry] as const),
+    );
+    const manifestDescription = (toolName: string): string | undefined => {
+      const entry = manifestByName.get(toolName);
+      return entry
+        ? entry.description + scratchPathHint + externalPathHint
+        : undefined;
+    };
+    const manifestProperties = (
+      toolName: string,
+    ): Record<string, TSchema> | undefined => {
+      const entry = manifestByName.get(toolName);
+      if (!entry) return undefined;
+      const properties = manifestParametersToProperties(entry);
+      if (!properties) return undefined;
+      // DCode-side augmentations on top of the manifest schema.
+      switch (toolName) {
+        case "Read":
+        case "Write":
+        case "Edit":
+          return { ...properties, file_path: aliasParam("path") };
+        case "Glob":
+        case "Grep":
+          return { ...properties, query: aliasParam("pattern") };
+        case "Bash":
+          return { ...properties, timeout: bashTimeoutParam() };
+        default:
+          return properties;
+      }
+    };
     const describe = (toolName: string): string => {
       switch (toolName) {
         case "BrowserPreview":
           return "Open a workspace HTML file in DCode's built-in browser panel. `path` is workspace-relative (e.g. \"demo/index.html\"). The preview live-reloads on later edits to the file or its sibling assets, so call once per page.";
         case "Read":
           return (
-            "Read a bounded window from an existing regular text file, never a directory. " +
+            manifestDescription("Read") ??
+            ("Read a bounded window from an existing regular text file, never a directory. " +
             "The result always includes `totalLines` so you know the file\'s scale upfront. " +
             "`content` is line-numbered (`N:`) under a `[path#TAG]` header; `tag` is the whole-file 4-hex Edit anchor. " +
             "`truncated` is true only when this window was cut short, not merely because the file continues. " +
             "For files beyond the default window, use Grep to locate the target content first, then Read " +
             "the relevant range with `offset` and `limit`. Activate and use Glob " +
             "when a directory must be listed or the file name is uncertain." +
-            `${scratchPathHint}${externalPathHint}`
+            `${scratchPathHint}${externalPathHint}`)
           );
         case "Glob":
           return (
-            "List files by glob pattern, newest first. Use `path` to scope the " +
+            manifestDescription("Glob") ??
+            ("List files by glob pattern, newest first. Use `path` to scope the " +
             "directory and `limit` to bound results; patterns use `/` as a " +
             "portable separator." +
-            `${scratchPathHint}${externalPathHint}`
+            `${scratchPathHint}${externalPathHint}`)
           );
         case "Grep":
           return (
-            "Search file contents with a Rust-compatible regex. `path` may name one file " +
+            manifestDescription("Grep") ??
+            ("Search file contents with a Rust-compatible regex. `path` may name one file " +
             "or a directory tree. Use `path` and " +
             "`include` to narrow the scan, `headLimit` to bound results, and " +
             'outputMode: "filesWithMatches" or "count" when content is unnecessary; ' +
             "`path` accepts portable relative paths." +
-            `${scratchPathHint}${externalPathHint}`
+            `${scratchPathHint}${externalPathHint}`)
           );
         case "Write":
-          return `Create or overwrite a file. Deliverables go into the workspace; temporary/intermediate files go into the scratch directory.${scratchPathHint}${externalPathHint}`;
+          return (
+            manifestDescription("Write") ??
+            `Create or overwrite a file. Deliverables go into the workspace; temporary/intermediate files go into the scratch directory.${scratchPathHint}${externalPathHint}`)
         case "Edit":
-          return `Replace, insert, or delete lines in an existing file. Names positions and supplies new content only — never old_string. Required: path, tag (4 hex from the latest Read/Grep/Write/Edit), ops. Ops: PUT N.=M: replace inclusive lines N–M; PUT <N: insert before N; PUT >N: insert after N; PUT >$: append; CUT N.=M delete; REM delete the file; MV DEST rename after other ops. Body rows are + plus the final line text. Every PUT with body rows must include the trailing colon, for example PUT 48.=48:; PUT 48.=48 followed by + rows is invalid. A colonless PUT is only for a register paste such as PUT <1 @name. No -old or context rows. Ranges name only the lines being changed. Re-ground on the tag returned by every successful write. After one failed Edit, classify the error: Read the live file for a stale tag or unseen lines (or retry unchanged on a complete EDIT_LINES_UNSEEN reveal), but correct syntax or range errors directly; do not guess. Do not edit the same path concurrently.${scratchPathHint}${externalPathHint}`;
-        case "Bash":
-          return `${commandShellToolDescription(this.commandShell, this.scratchDir)} Use Edit or Write instead of apply_patch, git apply, or patch; do not retry a failed shell patch command repeatedly.`;
+          return (
+            manifestDescription("Edit") ??
+            `Replace, insert, or delete lines in an existing file. Names positions and supplies new content only — never old_string. Required: path, tag (4 hex from the latest Read/Grep/Write/Edit), ops. Ops: PUT N.=M: replace inclusive lines N–M; PUT <N: insert before N; PUT >N: insert after N; PUT >$: append; CUT N.=M delete; REM delete the file; MV DEST rename after other ops. Body rows are + plus the final line text. Every PUT with body rows must include the trailing colon, for example PUT 48.=48:; PUT 48.=48 followed by + rows is invalid. A colonless PUT is only for a register paste such as PUT <1 @name. No -old or context rows. Ranges name only the lines being changed. Re-ground on the tag returned by every successful write. After one failed Edit, classify the error: Read the live file for a stale tag or unseen lines (or retry unchanged on a complete EDIT_LINES_UNSEEN reveal), but correct syntax or range errors directly; do not guess. Do not edit the same path concurrently.${scratchPathHint}${externalPathHint}`)
+        case "Bash": {
+          const bashManifest = manifestByName.get("Bash");
+          const shellHint = commandShellToolDescription(this.commandShell, this.scratchDir);
+          const patchGuidance =
+            " Use Edit or Write instead of apply_patch, git apply, or patch; do not retry a failed shell patch command repeatedly.";
+          return bashManifest
+            ? `${bashManifest.description} ${shellHint}${patchGuidance}`
+            : `${shellHint}${patchGuidance}`;
+        }
         case ASK_TOOL_NAME:
           return "Ask the user one or more questions. Each question has selectable options and the desktop card always provides a custom user-input option; unanswered questions are returned as empty answers.";
         case "PluginScaffold":
@@ -2860,16 +2956,7 @@ Delegation rules:
       },
       Bash: {
         command: Type.String(),
-        timeout: Type.Optional(
-          Type.Number({
-            minimum: MIN_COMMAND_TIMEOUT_SECONDS,
-            // Models routinely send milliseconds; a wider schema bound lets the
-            // runtime read the intent instead of burning the turn (D273 / D329).
-            maximum: MAX_ACCEPTED_COMMAND_TIMEOUT,
-            description:
-              `Optional command timeout in seconds from 1 to ${MAX_COMMAND_TIMEOUT_SECONDS}; defaults to 60 seconds.`,
-          }),
-        ),
+        timeout: bashTimeoutParam(),
       },
       PluginScaffold: {
         template: Type.String(),
@@ -3168,7 +3255,8 @@ Delegation rules:
         label: toolName,
         description: describe(toolName),
         parameters: Type.Object(
-          parameters[toolName] ?? { command: Type.String() },
+          manifestProperties(toolName) ??
+            parameters[toolName] ?? { command: Type.String() },
         ),
         // Normalizing here, above the write lock, means every consumer below
         // this line — the lock key, the host call, the transcript record — sees
