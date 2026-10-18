@@ -4,12 +4,6 @@ import {
   taskMessageSnapshot,
 } from "./delegation-message.js";
 import { InMemoryTurnEventSink, TurnStateMachine } from "../turn/index.js";
-// ADR-002 Phase A: builtin tool name lists live in the tool registry module.
-// Behavior-preserving extraction; the runtime still owns the catalog.
-import {
-  AGENT_MODE_BUILTIN_TOOLS,
-  CONTRACT_MODE_BUILTIN_TOOLS,
-} from "../tools/registry.js";
 import {
   Agent,
   BACKGROUND_CONTEXT,
@@ -36,6 +30,12 @@ import {
   type MessageEntry,
   type PrepareNextTurnContext,
 } from "@earendil-works/pi-agent-core";
+// ADR-002 Phase A: builtin tool name lists live in the tool registry module.
+// Behavior-preserving extraction; the runtime still owns the catalog.
+import {
+  AGENT_MODE_BUILTIN_TOOLS,
+  CONTRACT_MODE_BUILTIN_TOOLS,
+} from "../tools/registry.js";
 import {
   isContextOverflow,
   Type,
