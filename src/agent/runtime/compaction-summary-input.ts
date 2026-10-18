@@ -1,10 +1,9 @@
-import {
-  convertToLlm,
-  serializeConversation,
-  type AgentMessage,
-  type CompactionPreparation,
-} from "@earendil-works/pi-agent-core";
-import type { RetryPolicy } from "@earendil-works/pi-ai";
+import type {
+  AgentMessage,
+  CompactionPreparation,
+  RetryPolicy,
+} from "../pi-adapter/index.js";
+import { convertToLlm, serializeConversation } from "../pi-adapter/index.js";
 
 /**
  * Sizing and retry policy for the automatic summary request (ADR 0282).

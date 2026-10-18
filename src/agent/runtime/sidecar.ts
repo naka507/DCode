@@ -3,11 +3,12 @@
  * Protocol: NDJSON JSON-RPC on stdio with Electron main.
  * Host access is proxied through main (single host-core process).
  */
+import type { ModelAuth } from "../pi-adapter/index.js";
 import { createHash, randomUUID } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
 import { copyFile, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
-import type { ModelAuth } from "@earendil-works/pi-ai";
+
 import { ParentHostProxy } from "./parent-host-proxy.js";
 import { visionFromModelConfig } from "./model-capabilities.js";
 import { classifyAgentError } from "./agent-errors.js";

@@ -14,7 +14,7 @@
  * without double-counting cache reads or reasoning tokens.
  */
 
-import type { AgentMessage, AgentTool } from "@earendil-works/pi-agent-core";
+import type { AgentMessage, AgentTool } from "../pi-adapter/index.js";
 import type {
   ContextBreakdownItem,
   ContextBreakdownSource,

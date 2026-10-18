@@ -227,6 +227,45 @@ for (const entry of largeNewTypeScript) {
   }
 }
 
+// ADR-006: pi-* imports must go through src/agent/pi-adapter/. Files with
+// direct @earendil-works/* imports that predate the seam are grandfathered;
+// the list shrinks as clusters migrate.
+const piAdapterGrandfathered = new Set([
+  "src/agent/runtime/runtime.ts",
+  "src/agent/runtime/subagent.ts",
+  "src/agent/runtime/provider-binding.ts",
+  "src/agent/runtime/provider-retry.ts",
+  "src/agent/runtime/extensions/loader.ts",
+  "src/agent/runtime/extensions/runner.ts",
+  "src/agent/runtime/native-pi-session.ts",
+  "src/agent/runtime/prompt-templates.ts",
+  "src/agent/runtime/one-shot-complete.ts",
+  "src/agent/runtime/prompt-enhancement.ts",
+  "src/agent/runtime/session-title-summarize.ts",
+  "src/agent/runtime/delegation-history.ts",
+  "src/agent/runtime/compaction-request.ts",
+  "src/main/oauth.ts",
+]);
+for (const entry of metrics) {
+  if (
+    ![".ts", ".tsx", ".mts", ".cts"].includes(extname(entry.path)) ||
+    entry.path.startsWith("src/agent/pi-adapter/") ||
+    entry.path.startsWith("tests/")
+  ) {
+    continue;
+  }
+  const content = readFileSync(resolve(root, entry.path), "utf8");
+  if (
+    /from\s+["']@earendil-works\//.test(content) &&
+    !piAdapterGrandfathered.has(entry.path)
+  ) {
+    failures.push(
+      entry.path +
+        " imports @earendil-works/* directly; use src/agent/pi-adapter/ instead (ADR-006)",
+    );
+  }
+}
+
 console.log("Architecture metrics");
 console.log("Source files: " + metrics.length);
 console.log("Total LOC: " + metrics.reduce((total, entry) => total + entry.loc, 0));

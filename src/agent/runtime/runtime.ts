@@ -13,8 +13,6 @@ import {
   BACKGROUND_CONTEXT,
   compact,
   convertToLlm,
-  estimateContextTokens,
-  estimateTokens,
   prepareCompaction,
   withAbortSignal,
   type AgentContext,
@@ -34,6 +32,10 @@ import {
   type MessageEntry,
   type PrepareNextTurnContext,
 } from "@earendil-works/pi-agent-core";
+import {
+  estimateContextTokens,
+  estimateTokens,
+} from "../pi-adapter/index.js";
 // ADR-002 Phase A: builtin tool name lists live in the tool registry module.
 // Behavior-preserving extraction; the runtime still owns the catalog.
 import {

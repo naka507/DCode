@@ -12,12 +12,11 @@
  * DeepSeek relays still see real thinking without replaying tool-call pairs.
  */
 
+import type { AgentMessage, Entry } from "../pi-adapter/index.js";
 import {
   createBranchSummaryMessage,
   createCompactionSummaryMessage,
-  type AgentMessage,
-  type Entry,
-} from "@earendil-works/pi-agent-core";
+} from "../pi-adapter/index.js";
 import {
   retainedReasoningFromDetails,
   retainedReasoningToMessages,
