@@ -3,6 +3,7 @@ import {
   settledDelegationMessage,
   taskMessageSnapshot,
 } from "./delegation-message.js";
+import { InMemoryTurnEventSink, TurnStateMachine } from "../turn/index.js";
 import {
   Agent,
   BACKGROUND_CONTEXT,
@@ -1669,6 +1670,10 @@ export class DesktopAgentRuntime {
   private turnHadError = false;
   /** Bumped at the start of each parent `prompt()` / `executeApprovedPlan()`. */
   private turnEpoch = 0;
+  // ADR-001 Phase A: turn lifecycle observer. Additive only — it records what
+  // happened and never alters runtime behavior.
+  private turnTracker: TurnStateMachine | undefined;
+  private readonly turnEventSink = new InMemoryTurnEventSink();
   private compactionAbort?: AbortController;
   private compactionInProgress = false;
   /** The in-flight checkpoint was cut short by Stop/dispose, not by a failure. */
@@ -6757,6 +6762,8 @@ Delegation rules:
         ) {
           break;
         }
+        // ADR-001 Phase A: the model loop started a new assistant turn.
+        this.turnTracker?.setPhase("executing");
         this.emit({ type: "turn_start" });
         break;
       case "message_start": {
@@ -7233,6 +7240,14 @@ Delegation rules:
               )
             : undefined;
           this.requestStartedAt = endedAt;
+          // ADR-001 Phase A: record the completed tool execution on the turn.
+          if (activeTool) {
+            this.turnTracker?.notifyToolCompleted(
+              activeTool.toolName,
+              endedAt - activeTool.startedAt,
+              !event.isError,
+            );
+          }
           this.emit({
             type: "tool_end",
             toolCallId: event.toolCallId,
@@ -7419,6 +7434,36 @@ Delegation rules:
   ): Promise<{ turnId: string }> {
     if (this.disposed) throw new Error("runtime disposed");
     this.assertNotRunning();
+    // ADR-001 Phase A: observe the plan-execution turn lifecycle. The wrapper
+    // guarantees the tracker reaches a terminal state even when the run throws.
+    this.turnTracker = new TurnStateMachine({
+      turnId: durableTurnId,
+      sessionId: this.sessionId,
+      sinks: [this.turnEventSink],
+    });
+    this.turnTracker.begin();
+    try {
+      return await this.runApprovedPlan(execution, durableTurnId);
+    } catch (err) {
+      const classified = classifyAgentError(err);
+      const aborted = classified.code === "TURN_ABORTED";
+      this.turnTracker?.end(aborted ? "aborted" : "failed", {
+        code: classified.code,
+        message: classified.message,
+        retriable: classified.retriable,
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Former body of `executeApprovedPlan`, extracted so the wrapper above can
+   * observe the turn lifecycle. Behavior unchanged.
+   */
+  private async runApprovedPlan(
+    execution: PlanExecution,
+    durableTurnId: string,
+  ): Promise<{ turnId: string }> {
     this.retainPendingSteering();
     if (execution.sessionId !== this.sessionId) {
       throw Object.assign(new Error("approved plan belongs to another session"), {
@@ -7487,17 +7532,23 @@ Delegation rules:
     this.appendLiveEntry(internalId, internalMessage);
     this.agent.state.messages = this.liveSessionContext().messages;
     this.setAgentActivity({ phase: "starting", since: Date.now() });
+    this.turnTracker?.setPhase("executing");
     await this.agent.continue();
     await this.waitForIdleAndSteering();
     // Same recovery contract as a user prompt: a plan execution that overflows,
     // hits a retriable stream failure, or comes back silent must not end as a
     // run with no end events at all.
-    if (!(await this.runPendingRecoveries())) return { turnId: this.turnId };
+    if (!(await this.runPendingRecoveries())) {
+      this.turnTracker?.end("completed");
+      return { turnId: this.turnId };
+    }
     if (this.turnHadError) {
+      this.turnTracker?.end("failed");
       this.terminateParentTurn();
       return { turnId: this.turnId };
     }
     await this.resumeAfterDelegations();
+    this.turnTracker?.end("completed");
     return { turnId: this.turnId };
   }
 
@@ -7515,6 +7566,14 @@ Delegation rules:
     const nextTurnId = durableTurnId?.trim() || randomUUID();
     this.hostTurnId = nextTurnId;
     this.turnId = nextTurnId;
+    // ADR-001 Phase A: observe the turn lifecycle. The tracker is replaced
+    // every prompt() and only records events; it never drives the loop.
+    this.turnTracker = new TurnStateMachine({
+      turnId: nextTurnId,
+      sessionId: this.sessionId,
+      sinks: [this.turnEventSink],
+    });
+    this.turnTracker.begin();
     this.acceptingSteering = true;
     this.gracefulStopRequested = false;
     this.runCancelled = false;
@@ -7543,6 +7602,7 @@ Delegation rules:
         timestamp: Date.now(),
       };
       if (this.automaticCompactionNeeded([incomingUserMessage])) {
+        this.turnTracker?.setPhase("compacting");
         const compacted = await this.runCompaction("threshold", false);
         if (!compacted) {
           if (this.compactionAborted) {
@@ -7557,6 +7617,11 @@ Delegation rules:
             message: "Automatic context compaction failed before the model request",
             retriable: false,
           });
+          this.turnTracker?.end("failed", {
+            code: "CONTEXT_COMPACTION_FAILED",
+            message: "Automatic context compaction failed before the model request",
+            retriable: false,
+          });
           return { turnId: this.turnId };
         }
         if (this.automaticCompactionNeeded([incomingUserMessage])) {
@@ -7566,10 +7631,17 @@ Delegation rules:
               "The pending prompt still exceeds the safe model context budget after compaction",
             retriable: false,
           });
+          this.turnTracker?.end("failed", {
+            code: "CONTEXT_TOO_LARGE",
+            message:
+              "The pending prompt still exceeds the safe model context budget after compaction",
+            retriable: false,
+          });
           return { turnId: this.turnId };
         }
       }
       await this.extensionBeforeAgentStart(modelInput);
+      this.turnTracker?.setPhase("waiting_model");
       if (typeof modelInput === "string") {
         await this.agent.prompt(modelInput);
       } else {
@@ -7578,12 +7650,17 @@ Delegation rules:
       await this.waitForIdleAndSteering();
       void this.extensionRunner?.emit("agent_settled", { type: "agent_settled" });
 
-      if (!(await this.runPendingRecoveries())) return { turnId: this.turnId };
+      if (!(await this.runPendingRecoveries())) {
+        this.turnTracker?.end("completed");
+        return { turnId: this.turnId };
+      }
       if (this.turnHadError) {
+        this.turnTracker?.end("failed");
         this.terminateParentTurn();
         return { turnId: this.turnId };
       }
       await this.resumeAfterDelegations();
+      this.turnTracker?.end("completed");
     } catch (err) {
       const classifiedError = classifyAgentError(err);
       const diagnosticError =
@@ -7596,6 +7673,12 @@ Delegation rules:
                 ? Math.max(0, Date.now() - this.requestStartedAt)
                 : undefined,
             );
+      const aborted = classifiedError.code === "TURN_ABORTED";
+      this.turnTracker?.end(aborted ? "aborted" : "failed", {
+        code: classifiedError.code,
+        message: diagnosticError.message,
+        retriable: classifiedError.retriable,
+      });
       this.terminateParentTurn();
       this.finalizeCurrentAssistant(
         classifiedError.code === "TURN_ABORTED" ? "aborted" : "error",
@@ -7760,6 +7843,8 @@ Delegation rules:
     this.providerRetryAbort?.abort();
     if (this.compactionInProgress) this.compactionAborted = true;
     this.compactionAbort?.abort();
+    // ADR-001 Phase A: record the abort on the observed turn lifecycle.
+    this.turnTracker?.end("aborted");
   }
 
   /** Ask pi-agent-core to stop after the current assistant/tool turn. */
