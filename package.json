@@ -1,6 +1,6 @@
 {
   "name": "dcode",
-  "description": "DCode — desktop workspace for AI coding agents (Electron shell + Vue 3 renderer)",
+  "description": "DCode \u2014 desktop workspace for AI coding agents (Electron shell + Vue 3 renderer)",
   "version": "1.0.8",
   "license": "Apache-2.0",
   "private": true,
@@ -55,7 +55,8 @@
     "test:e2e:agent-live": "node scripts/e2e-agent-live.mjs",
     "test:e2e:provider-api-style": "node scripts/e2e-provider-api-style.mjs",
     "test:e2e:provider-ipc-payload": "node scripts/e2e-provider-ipc-payload.mjs",
-    "test:e2e:provider-order": "node scripts/e2e-provider-order.mjs"
+    "test:e2e:provider-order": "node scripts/e2e-provider-order.mjs",
+    "eval": "node --experimental-strip-types scripts/run-evals.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "0.85.1",
