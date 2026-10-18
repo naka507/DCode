@@ -59,3 +59,4 @@ coverage/
 .workbuddy
 electron.vite.config.*.mjs
 bin/
+evals/provider.json
