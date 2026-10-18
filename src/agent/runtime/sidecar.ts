@@ -403,6 +403,9 @@ async function runtimeFor(
   runtimes.set(sessionId, runtime);
   // Load failures are diagnostics, never a failed prompt (spec 16 §4.4).
   await runtime.loadTrustedExtensions().catch(() => undefined);
+  // ADR-002 Phase B: prefer the tools.describe manifest for DCore tool
+  // entries; static definitions remain the fallback for older hosts.
+  await runtime.refreshDCoreToolManifest().catch(() => undefined);
   if (provider.extensionAgentKey) {
     const activated = await runtime.activateTrustedExtensionAgent(
       provider.extensionAgentKey,
