@@ -6,8 +6,7 @@
  * Adding a strategy is a new `CompactionStrategyDef` + `registerCompactionStrategy`,
  * with no `runtime.ts` edits.
  */
-import type { Entry } from "@earendil-works/pi-agent-core";
-import type { Usage } from "@earendil-works/pi-ai";
+import type { Entry, Usage } from "../pi-adapter/index.js";
 import type {
   CheckpointBuild,
   CompactionRetentionMode,

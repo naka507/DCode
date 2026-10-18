@@ -5,8 +5,9 @@
  * layer, and this runtime does the same.
  */
 
+import type { Api, Model, ProviderHeaders, SimpleStreamOptions } from "../pi-adapter/index.js";
 import { randomUUID } from "node:crypto";
-import type { Api, Model, ProviderHeaders, SimpleStreamOptions } from "@earendil-works/pi-ai";
+
 import {
   APP_VERSION,
   OPENCODE_GO_API_STYLE,

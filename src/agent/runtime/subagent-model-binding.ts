@@ -1,3 +1,4 @@
+import type { AgentOptions } from "../pi-adapter/index.js";
 import {
   buildProviderModel,
   copilotRequestHeaders,
@@ -17,7 +18,7 @@ import {
   createProviderRetryStream,
   type ProviderRetryController,
 } from "./provider-retry.js";
-import type { AgentOptions } from "@earendil-works/pi-agent-core";
+
 import type { SubagentThinkingLevel } from "@dcode/shared";
 import type { ClassifiedAgentError } from "./agent-errors.js";
 

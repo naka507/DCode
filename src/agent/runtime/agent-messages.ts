@@ -5,8 +5,7 @@
  * shape, so the conversions live here instead of being duplicated per loop.
  */
 
-import type { JsonValue } from "@earendil-works/pi-agent-core";
-import type { Usage } from "@earendil-works/pi-ai";
+import type { JsonValue, Usage } from "../pi-adapter/index.js";
 import type { MessageUsage } from "@dcode/shared";
 
 export function nowIso(): string {

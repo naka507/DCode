@@ -3,7 +3,7 @@
  * agent.complete. Credentials stay in this process.
  */
 
-import type { Context } from "@earendil-works/pi-ai";
+import type { Context } from "../agent/pi-adapter/index.js";
 import {
   PLUGIN_COMPLETE_DEFAULT_TAIL,
   pluginLlmContextFromTranscript,

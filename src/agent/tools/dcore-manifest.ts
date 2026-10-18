@@ -8,7 +8,7 @@
  * definitions in `runtime.ts`, so the agent never loses its tools because
  * the manifest was unavailable.
  */
-import { Type, type TSchema } from "@earendil-works/pi-ai";
+import { Type, type TSchema } from "../pi-adapter/index.js";
 
 /** One entry of the DCore `tools.describe` manifest (wire format). */
 export interface DCoreManifestTool {
