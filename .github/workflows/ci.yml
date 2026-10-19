@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: naka507/DCore
-          token: secrets.DCORE_REPO_TOKEN
+          token: ${{ secrets.DCORE_REPO_TOKEN }}
           path: dcore
 
       - run: npm ci
