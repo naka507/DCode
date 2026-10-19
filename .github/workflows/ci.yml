@@ -21,9 +21,11 @@ jobs:
           cache: npm
 
       - name: Debug secret hash
-        run: echo "secret sha256: $(echo -n "$DCORE_REPO_TOKEN" | sha256sum | cut -d' ' -f1)"
+        run: |
+          echo "secret sha256: $(echo -n "$DCORE_REPO_TOKEN" | sha256sum | cut -d' ' -f1)"
         env:
           DCORE_REPO_TOKEN: ${{ secrets.DCORE_REPO_TOKEN }}
+
 
 
       # DCore is private: cross-repository protocol assertions run only when
