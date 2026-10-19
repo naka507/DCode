@@ -541,3 +541,89 @@ repository's actual default branch, resolved at run time; the fallback is
 `HEAD^`, which is one commit deep and therefore not a branch base.
 `tests/architecture-gate-base.test.mjs` pins the resolution against real
 throwaway repositories.
+
+---
+
+## Architecture Decision Records
+
+This repository keeps no separate ADR tree; decisions that change a frozen
+architecture, public interface, data ownership model, or security boundary
+are recorded here, next to the constraints they explain (AGENTS.md §17).
+
+### ADR-001: Turn lifecycle state machine (observer)
+
+The agent loop lives in pi-agent-core; DCode observes it instead of owning
+it. `src/agent/turn/` implements a `TurnStateMachine` (states
+`pending/active/awaiting_approval/suspended/completed/failed/aborted`) as a
+pure observer: illegal transitions and sink failures are logged, never thrown.
+
+- Phase A: in-memory sink only, zero behavior change.
+- Phase B: `DCoreTurnEventSink` persists events to DCore's `turn_events`
+  table (schema v20) via `turn.appendEvent`, fire-and-forget. A
+  `TURN_NOT_FOUND` (1007) on a non-host turn degrades to a once-per-turn
+  warning; payloads over 64KB are defensively truncated.
+- Protocol 11→12 shipped with this (DCore hard-rejects mismatches, 1011).
+
+### ADR-002: Unified ToolRegistry
+
+Tool definitions converge on one contract (`src/agent/tools/registry.ts`):
+`name/source/description/inputSchema/permission{scope,risk,paths}/
+idempotent/supportsDryRun`. Three sources (DCore native, MCP, plugins) feed
+the registry; the permission enforcement point is DCore.
+
+- Phase A: read-only modeling + CI assertion, zero behavior change.
+- Phase B: DCore serves `tools.describe`; `refreshDCoreToolManifest()`
+  builds DCode tool entries from the manifest (best-effort, static fallback).
+  The permission table stays curated in DCode — the manifest only supplies
+  descriptions and parameter schemas.
+- Phase C (future): plugin `tools[]` manifests + MCP risk overrides, then
+  delete the hardcoded name sets.
+
+### ADR-003: Subagent task dependency graph
+
+`Task` accepts `dependsOn: string[]` (delegationIds). A Task whose
+dependencies haven't settled registers as `waiting`: no concurrency slot, no
+`SubagentRun` until release. `settleDelegation` pumps waiters — all deps
+`completed` starts the run with upstream reports prepended to its brief; any
+dep failed/stopped fails the waiter fast. Edges point new→old, so cycles are
+impossible by construction. `TaskWait` converges via the completion promise;
+`TaskStop` on a waiter fails it fast.
+
+### ADR-004: Pluggable compaction strategies
+
+`src/agent/runtime/compaction-strategies.ts` owns the strategy contract
+(`name/toolReply/build`) and registry. `summary` and `fresh_window` register
+at module load with unchanged behavior; `runtime.ts` keeps the shared
+preparation and dispatches via registry lookup. Unknown names fail loudly.
+Adding a strategy is a def + `registerCompactionStrategy`, no `runtime.ts`
+edits.
+
+### ADR-005: Eval harness
+
+`evals/` holds task definitions (prompt + fixture workspace + outcome-based
+assertions); `src/eval/` runs each task through a real `DesktopAgentRuntime`
+backed by a real DCore binary over stdio, in an isolated temp workspace.
+Assertions (`fileExists/fileContains/fileNotContains/commandSucceeds/
+maxTurns/maxToolCalls`) check outcomes, not trajectories. `npm run eval`;
+provider from gitignored `evals/provider.json`. Not for CI (needs API keys).
+
+### ADR-006: pi-* adapter seam (P1-4, step 1)
+
+`src/agent/pi-adapter/` is DCode's boundary with `@earendil-works/pi-*`
+(0.85.1, exact pin): `types.ts` re-exports every pi-* type used, `functions.ts`
+wraps the pure function surface, `schema.ts` re-exports TypeBox's `Type`,
+`backend.ts` documents the `AgentBackend` seam and the load-bearing patch
+behaviors (hosted search) a replacement must preserve. All type-only imports
+and function call sites go through the adapter; `Agent` construction,
+provider binding, native session, and OAuth keep direct imports (grandfathered).
+`check-architecture.mjs` rejects new direct `@earendil-works/*` imports. Full
+Agent-IR replacement is future work.
+
+### ADR-007: Protocol contract
+
+`protocol/contract.json` is the single source of truth for the DCode↔DCore
+protocol: version 12, 163 DCore RPC methods, prefix-routed
+`session.collaboration.*`, host-proxy `extensions.*`. `npm run
+check:protocol` verifies DCode's `PROTOCOL_VERSION`, DCore's `state.rs`
+version, the method inventory against `rpc/mod.rs`, and every
+`host.call`/`transport.call` literal in DCode against the contract.
