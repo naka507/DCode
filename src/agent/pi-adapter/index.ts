@@ -9,9 +9,12 @@
  *   behaviors a replacement must keep.
  * - `ir.ts`: the Agent Intermediate Representation — DCode's own loop data
  *   model, the target a replacement backend must speak.
+ * - `pi-backend.ts`: `PiAgentBackend`, the thin wrapper around pi's `Agent`.
+ *   The ONLY non-adapter module importing pi's `Agent` class.
  */
 export * from "./types.js";
 export * from "./functions.js";
 export * from "./schema.js";
 export * from "./backend.js";
 export * from "./ir.js";
+export * from "./pi-backend.js";

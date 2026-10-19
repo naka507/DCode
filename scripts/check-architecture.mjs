@@ -232,7 +232,6 @@ for (const entry of largeNewTypeScript) {
 // the list shrinks as clusters migrate.
 const piAdapterGrandfathered = new Set([
   "src/agent/runtime/runtime.ts",
-  "src/agent/runtime/subagent.ts",
   "src/agent/runtime/provider-binding.ts",
   "src/agent/runtime/provider-retry.ts",
   "src/agent/runtime/extensions/loader.ts",

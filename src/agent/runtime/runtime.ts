@@ -9,8 +9,8 @@ import {
   InMemoryTurnEventSink,
   TurnStateMachine,
 } from "../turn/index.js";
+import { PiAgentBackend } from "../pi-adapter/index.js";
 import {
-  Agent,
   BACKGROUND_CONTEXT,
   compact,
   convertToLlm,
@@ -1489,7 +1489,7 @@ function estimateVisibleResponseOutputTokens(
 }
 
 export class DesktopAgentRuntime {
-  private agent: Agent;
+  private agent: PiAgentBackend;
   private models: Models;
   private model: Model<Api>;
   private turnId?: string;
@@ -1839,7 +1839,7 @@ Delegation rules:
       ...(skillsPrompt ? [skillsPrompt] : []),
     ].join("\n\n");
     this.baseSystemPrompt = opts.systemPrompt ?? defaultSystemPrompt;
-    this.agent = new Agent({
+    this.agent = new PiAgentBackend({
       streamFn: (m, context, options) => {
         this.setAgentActivity({ phase: "waiting-model", since: Date.now() });
         this.providerResponseStatus = undefined;
