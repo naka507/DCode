@@ -3,11 +3,13 @@
  *
  * Phase A: observer-only. `TurnStateMachine` records the lifecycle of one
  * agent turn without changing runtime behavior. Events flow to `TurnEventSink`
- * implementations: `InMemoryTurnEventSink` (kept for UI/tests) and
+ * implementations: `InMemoryTurnEventSink` (kept for UI/tests),
  * `DCoreTurnEventSink` (persists to DCore's `turn_events` table, schema v20,
- * PROTOCOL_VERSION 12).
+ * PROTOCOL_VERSION 12), and `ForwardingTurnEventSink` (streams to Electron
+ * main → renderer for live UI subscription, Phase C).
  */
 export * from "./types.js";
 export * from "./state-machine.js";
 export * from "./sinks.js";
 export * from "./dcore-sink.js";
+export * from "./forwarding-sink.js";

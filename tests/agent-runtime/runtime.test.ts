@@ -2339,7 +2339,11 @@ describe("DesktopAgentRuntime plan transitions", () => {
     // leaves neither a bubble nor an error row behind.
     expect(events.filter((event) => event.type === "turn_end")).toHaveLength(1);
     expect(events.filter((event) => event.type === "agent_end")).toHaveLength(1);
-    expect(events.at(-1)?.type).toBe("agent_end");
+    // ADR-001 Phase C: the turn observer forwards turn.ended after the loop
+    // settles, so the turn event (not agent_end) is last.
+    expect(events.at(-2)?.type).toBe("agent_end");
+    expect(events.at(-1)?.type).toBe("turn");
+    expect(events.at(-1)?.turnEvent?.type).toBe("turn.ended");
     expect(events.some((event) => event.type === "error")).toBe(false);
     expect(
       events.filter(
@@ -4088,7 +4092,11 @@ describe("DesktopAgentRuntime assistant thinking events", () => {
           event.type === "message_end" && event.message?.status === "complete",
       ),
     ).toHaveLength(1);
-    expect(events.at(-1)?.type).toBe("agent_end");
+    // ADR-001 Phase C: the turn observer forwards turn.ended after the loop
+    // settles, so the turn event (not agent_end) is last.
+    expect(events.at(-2)?.type).toBe("agent_end");
+    expect(events.at(-1)?.type).toBe("turn");
+    expect(events.at(-1)?.turnEvent?.type).toBe("turn.ended");
     expect(events).toContainEqual(
       expect.objectContaining({
         type: "message_end",

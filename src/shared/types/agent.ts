@@ -6,6 +6,7 @@ import type { AgentStatus } from "./sessions.js";
 import type { MessageUsage, ToolTokenUsage, UiMessage } from "./messages.js";
 import type { PermissionDecision, Risk } from "./permissions.js";
 import type { ThinkingLevel } from "./models.js";
+import type { TurnEvent } from "./turn.js";
 import type { RacpPermissionMode } from "../racp.js";
 
 export type AgentPromptRequest = {
@@ -272,7 +273,18 @@ export type AgentEvent =
       error?: { code: string; message: string };
     }
   | { type: "error"; error: AppError }
-  | { type: "status"; status: AgentStatus };
+  | { type: "status"; status: AgentStatus }
+  | {
+      type: "turn";
+      /**
+       * Turn lifecycle event from the observer state machine (ADR-001
+       * Phase C). Coarse-grained: turn started / phase changed / tool
+       * completed / delegation / compaction / approval / ended. The UI
+       * subscribes to these for live turn status; they are also persisted
+       * to DCore's `turn_events` table via the DCore sink.
+       */
+      turnEvent: TurnEvent;
+    };
 
 export type AgentEventEnvelope = {
   sessionId: string;
