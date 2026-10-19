@@ -37,6 +37,7 @@ import {
   effectiveRemotePermissionMode,
   racpKindForAgentEvent,
   rolesAllowOperation,
+  toRacpTurnStatus,
 } from "@dcode/shared";
 
 import { ApprovalBroker, type ApprovalPort } from "./approvals.js";
@@ -328,6 +329,24 @@ export class AgentHost {
       }
       case "status": {
         this.applyStatus(state, event.status);
+        this.emit(state, "turn.activity", { event }, meta2);
+        return;
+      }
+      case "turn": {
+        // ADR-001 Phase C: the sidecar's turn lifecycle observer reports
+        // through here. Mirror the local status onto the host's turn record
+        // using the unified RACP vocabulary, then fan out to subscribers.
+        const turnEvent = event.turnEvent;
+        const turn = turnId ? state.turns.get(turnId) : undefined;
+        if (turn && turnEvent.type === "turn.ended") {
+          turn.status = toRacpTurnStatus(
+            turnEvent.outcome === "completed" ? "completed" : turnEvent.outcome,
+          );
+          turn.endedAt = new Date(turnEvent.at).toISOString();
+        } else if (turn && turnEvent.type === "turn.approval") {
+          turn.status =
+            turnEvent.kind === "requested" ? "waiting_approval" : "running";
+        }
         this.emit(state, "turn.activity", { event }, meta2);
         return;
       }

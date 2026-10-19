@@ -1187,6 +1187,37 @@
   top: calc(var(--ds-toolbar-height) + 12px + 38px);
 }
 
+/* ADR-001 Phase C: live turn status indicator, subscribed from turn events. */
+.turn-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  line-height: var(--leading-compact-plus);
+  color: var(--ds-text-secondary);
+  background: var(--ds-surface-sunken);
+  border: 1px solid var(--ds-border-subtle);
+  white-space: nowrap;
+}
+
+.turn-status-indicator.is-terminal {
+  color: var(--ds-text-tertiary);
+}
+
+.turn-status-indicator .turn-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--ds-accent);
+  flex: none;
+}
+
+.turn-status-indicator.is-terminal .turn-status-dot {
+  background: var(--ds-text-tertiary);
+}
+
 .agent-status-capsule {
   position: relative;
   pointer-events: auto;

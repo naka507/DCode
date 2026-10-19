@@ -10,6 +10,10 @@ import { projectMessageEnd, reconcilePersistedUserMessage } from "../../lib/sess
 import type {
   AgentEventEnvelope,
   PlanningStateEvent,
+  TurnEvent,
+  TurnOutcome,
+  TurnPhase,
+  TurnStatus,
   UiMessage,
 } from "@dcode/shared";
 import {
@@ -34,6 +38,7 @@ import {
 } from "../../lib/plan-mode-state";
 import { formatToolValue } from "../../lib/tool-display";
 import type { AppState } from "../app-state";
+import type { TurnStateInfo } from "../app-state";
 import type { SessionRuntime } from "../runtime/session-runtime";
 import type { StoreAccess } from "./types";
 
@@ -240,6 +245,18 @@ export function createEventsSlice({
             ...state.agentStatuses,
             [envelope.sessionId]: event.status,
           },
+        }));
+      }
+      // ADR-001 Phase C: fold turn lifecycle events into the per-session
+      // turn state mirror. The sidecar's TurnStateMachine is the source of
+      // truth; this is a display projection for live turn status UI.
+      if (event.type === "turn") {
+        set((state) => ({
+          turnStates: applyTurnEvent(
+            state.turnStates,
+            envelope.sessionId,
+            event.turnEvent,
+          ),
         }));
       }
       if (
@@ -662,4 +679,74 @@ export function createEventsSlice({
       }
     },
   };
+}
+
+/**
+ * Fold one turn lifecycle event into the per-session turn state mirror
+ * (ADR-001 Phase C). Pure function, tested directly.
+ *
+ * Events for a turn id that isn't the currently tracked one start a new
+ * record (a new turn began); terminal `turn.ended` records the outcome but
+ * keeps the entry so the UI can show what happened.
+ */
+export function applyTurnEvent(
+  states: Record<string, TurnStateInfo>,
+  sessionId: string,
+  event: TurnEvent,
+): Record<string, TurnStateInfo> {
+  const current = states[sessionId];
+  switch (event.type) {
+    case "turn.started":
+      return {
+        ...states,
+        [sessionId]: {
+          turnId: event.turnId,
+          status: "active",
+          phase: "starting",
+          toolCallCount: 0,
+          startedAt: event.at,
+        },
+      };
+    case "turn.phase_changed": {
+      if (!current || current.turnId !== event.turnId) return states;
+      return {
+        ...states,
+        [sessionId]: { ...current, phase: event.to },
+      };
+    }
+    case "turn.tool_completed": {
+      if (!current || current.turnId !== event.turnId) return states;
+      return {
+        ...states,
+        [sessionId]: {
+          ...current,
+          toolCallCount: current.toolCallCount + 1,
+        },
+      };
+    }
+    case "turn.approval": {
+      if (!current || current.turnId !== event.turnId) return states;
+      return {
+        ...states,
+        [sessionId]: {
+          ...current,
+          status: event.kind === "requested" ? "awaiting_approval" : "active",
+        },
+      };
+    }
+    case "turn.ended": {
+      if (!current || current.turnId !== event.turnId) return states;
+      return {
+        ...states,
+        [sessionId]: {
+          ...current,
+          status: event.outcome === "completed" ? "completed" : event.outcome,
+          endedAt: event.at,
+          outcome: event.outcome,
+        },
+      };
+    }
+    default:
+      return states;
+  }
 }

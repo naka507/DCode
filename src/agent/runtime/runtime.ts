@@ -5,6 +5,7 @@ import {
 } from "./delegation-message.js";
 import {
   DCoreTurnEventSink,
+  ForwardingTurnEventSink,
   InMemoryTurnEventSink,
   TurnStateMachine,
 } from "../turn/index.js";
@@ -1681,6 +1682,14 @@ export class DesktopAgentRuntime {
   // happened and never alters runtime behavior.
   private turnTracker: TurnStateMachine | undefined;
   private readonly turnEventSink = new InMemoryTurnEventSink();
+  // ADR-001 Phase C: stream turn lifecycle events to the UI. The forwarder
+  // reuses the existing `agent.event` envelope path (sidecar → Electron
+  // main → renderer); the renderer subscribes to `turn` events for live
+  // turn status. Emitted via `this.emit`, so it inherits the envelope's
+  // sessionId/turnId/ts stamping.
+  private readonly turnForwardingSink = new ForwardingTurnEventSink((event) =>
+    this.emit({ type: "turn", turnEvent: event }),
+  );
   // ADR-001 Phase B: persist turn events to DCore's turn_events table. The
   // transport closure is lazy, so referencing this.host here is safe — it
   // only runs at event time, long after construction.
@@ -7654,7 +7663,7 @@ Delegation rules:
     this.turnTracker = new TurnStateMachine({
       turnId: durableTurnId,
       sessionId: this.sessionId,
-      sinks: [this.turnEventSink, this.dcoreTurnEventSink],
+      sinks: [this.turnEventSink, this.dcoreTurnEventSink, this.turnForwardingSink],
     });
     this.turnTracker.begin();
     try {
@@ -7786,7 +7795,7 @@ Delegation rules:
     this.turnTracker = new TurnStateMachine({
       turnId: nextTurnId,
       sessionId: this.sessionId,
-      sinks: [this.turnEventSink, this.dcoreTurnEventSink],
+      sinks: [this.turnEventSink, this.dcoreTurnEventSink, this.turnForwardingSink],
     });
     this.turnTracker.begin();
     this.acceptingSteering = true;

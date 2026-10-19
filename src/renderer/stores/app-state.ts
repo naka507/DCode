@@ -32,6 +32,9 @@ import type {
   ReviewRollbackResult,
   SessionSummary,
   SessionThinkingLevel,
+  TurnOutcome,
+  TurnPhase,
+  TurnStatus,
   UiMessage,
 } from "@dcode/shared";
 import type { SettingsTabId } from "../lib/settings-search";
@@ -109,6 +112,21 @@ export type DraftSessionConfiguration = {
   permissionMode?: PermissionMode;
 };
 
+/**
+ * Renderer-side projection of a turn's lifecycle (ADR-001 Phase C).
+ * Built by folding `turn` agent events; the sidecar's TurnStateMachine is
+ * the source of truth, this is a display mirror.
+ */
+export type TurnStateInfo = {
+  turnId: string;
+  status: TurnStatus;
+  phase: TurnPhase;
+  toolCallCount: number;
+  startedAt: number;
+  endedAt?: number;
+  outcome?: TurnOutcome;
+};
+
 
 export type AppState = {
   ready: boolean;
@@ -147,6 +165,12 @@ export type AppState = {
   runningSessions: Record<string, boolean>;
   /** Runtime-owned phase for explaining quiet intervals in active turns. */
   agentStatuses: Record<string, AgentStatus>;
+  /**
+   * Live turn lifecycle per session, subscribed from turn events (ADR-001
+   * Phase C). Updated on every `turn` agent event; cleared when the session
+   * is removed. Terminal states linger so the UI can show the outcome.
+   */
+  turnStates: Record<string, TurnStateInfo>;
   /** Latest in-memory result for each session, used by the active transcript. */
   latestTurnResults: Record<string, AgentTurnResult>;
   /** Latest terminal outcome per session for compact sidebar feedback. */

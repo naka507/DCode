@@ -15,6 +15,7 @@ import Type from "typebox";
 
 import { ErrorCodes } from "./errors.js";
 import type { AgentEvent } from "./types.js";
+import type { TurnStatus } from "./types/turn.js";
 
 type Static<T extends Type.TSchema> = Type.Static<T>;
 
@@ -82,6 +83,34 @@ export const RACP_ACTIVE_TURN_STATUSES: readonly RacpTurnStatus[] = [
   "waiting_approval",
   "waiting_input",
 ];
+
+/**
+ * Map the local turn lifecycle status (ADR-001) to the RACP remote-control
+ * vocabulary (ADR-001 Phase C: unified turn vocabulary).
+ *
+ * The RACP protocol itself is unchanged; this is a pure translation for
+ * surfaces that report local turn state through the remote-control channel.
+ * `suspended` maps to `waiting_input`: a suspended turn waits for the user
+ * to decide whether to resume it.
+ */
+export function toRacpTurnStatus(status: TurnStatus): RacpTurnStatus {
+  switch (status) {
+    case "pending":
+      return "queued";
+    case "active":
+      return "running";
+    case "awaiting_approval":
+      return "waiting_approval";
+    case "suspended":
+      return "waiting_input";
+    case "completed":
+      return "completed";
+    case "failed":
+      return "failed";
+    case "aborted":
+      return "canceled";
+  }
+}
 
 export const RACP_TURN_ADMISSIONS = ["reject_if_busy", "queue"] as const;
 export type RacpTurnAdmission = (typeof RACP_TURN_ADMISSIONS)[number];
@@ -682,6 +711,7 @@ export function racpKindForAgentEvent(
     case "turn_start":
     case "turn_end":
     case "status":
+    case "turn":
       return { kind: "turn.activity", durable: false };
     case "message_start":
       return { kind: "item.started", durable: true, itemType: "message" };
