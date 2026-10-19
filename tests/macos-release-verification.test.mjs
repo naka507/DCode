@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, delimiter } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -29,7 +29,7 @@ const stapleScript = fileURLToPath(
 );
 
 /** PATH for the shell: the stub directory first, then the inherited entries. */
-const shellPath = (bin) => [bin, process.env.PATH].filter(Boolean).join(";");
+const shellPath = (bin) => [bin, process.env.PATH].filter(Boolean).join(delimiter);
 
 test("macOS release finalization staples the generated DMG", { skip }, async (t) => {
   const root = await mkdtemp(join(tmpdir(), "dcode-macos-staple-"));
