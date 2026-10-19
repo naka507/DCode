@@ -38,9 +38,13 @@ import {
 } from "../pi-adapter/index.js";
 // ADR-002 Phase A: builtin tool name lists live in the tool registry module.
 // Behavior-preserving extraction; the runtime still owns the catalog.
+// ADR-002 Phase C: the hardcoded PATH_MUTATING_TOOLS / CHAT_CORE_TOOL_NAMES /
+// AGENT_CORE_TOOL_NAMES sets are derived from the registry instead.
 import {
   AGENT_MODE_BUILTIN_TOOLS,
   CONTRACT_MODE_BUILTIN_TOOLS,
+  isCoreToolInMode,
+  isPathMutatingTool,
 } from "../tools/registry.js";
 import {
   DCORE_MANIFEST_TOOL_NAMES,
@@ -620,22 +624,11 @@ const PATH_SCOPED_INSTRUCTION_TOOLS = new Set([
   "Edit",
   "BrowserPreview",
 ]);
-/** Tools whose `path` argument is rewritten, and which therefore must not run
- * concurrently against the same file (see `PathMutex`). */
-const PATH_MUTATING_TOOLS = new Set(["Write", "Edit"]);
-const CHAT_CORE_TOOL_NAMES = new Set(["Read", "Glob", "Grep", ASK_TOOL_NAME]);
-const AGENT_CORE_TOOL_NAMES = new Set([
-  "Read",
-  "Write",
-  "Edit",
-  "Bash",
-  ASK_TOOL_NAME,
-  // The slash menu answers a user-invoked `/skill-id` with an instruction to
-  // call `Skill { id }` on the first turn (ADR 0219), and a capability the
-  // model has to go looking for is one it will not use. Registration keeps its
-  // own gate: the tool only exists when the catalog is non-empty.
-  SKILL_TOOL_NAME,
-]);
+// ADR-002 Phase C: the path-mutating set is derived from the tool registry
+// (`isPathMutatingTool`, i.e. permission.scope === "write") instead of a
+// hardcoded PATH_MUTATING_TOOLS set. The core-tool sets
+// (CHAT_CORE_TOOL_NAMES / AGENT_CORE_TOOL_NAMES) are likewise derived via
+// `isCoreToolInMode`; see `isCoreTool` below.
 const MAX_ON_DEMAND_TOOL_PROMPT_ENTRIES = 64;
 const MAX_TOOL_SEARCH_RESULT_NAMES = 24;
 
@@ -3160,7 +3153,7 @@ Delegation rules:
         // stale strike to terminate the next unrelated failure.
         if (!failureKey && result.ok) {
           const succeededKey =
-            PATH_MUTATING_TOOLS.has(toolName) && typeof recordParams?.path === "string"
+            isPathMutatingTool(toolName) && typeof recordParams?.path === "string"
               ? mutationFailureKey(recordParams.path)
               : toolName === "Bash" && isPatchCommand(recordParams?.command)
                 ? BASH_PATCH_FAILURE_KEY
@@ -3250,7 +3243,7 @@ Delegation rules:
         execute: async (toolCallId, rawParams, signal, onUpdate) => {
           const params = normalizeToolParams(toolName, rawParams);
           requireAliasedParams(toolName, params);
-          return PATH_MUTATING_TOOLS.has(toolName)
+          return isPathMutatingTool(toolName)
             ? this.writeLocks.run(
                 isRecord(params) ? String(params.path ?? "") : "",
                 () => run(toolCallId, params, signal, onUpdate),
@@ -3478,17 +3471,10 @@ Delegation rules:
       name === SUBAGENT_LIST_TOOL_NAME ||
       name === SUBAGENT_STOP_TOOL_NAME ||
       (this.mode === "agent"
-        ? AGENT_CORE_TOOL_NAMES.has(name)
+        ? isCoreToolInMode(name, "agent")
         : proposalKindForMode(this.mode)
-          ? new Set([
-              "Read",
-              "Glob",
-              "Grep",
-              "Bash",
-              "BrowserPreview",
-              ASK_TOOL_NAME,
-            ]).has(name) || this.isPlanSafePluginTool(name)
-          : CHAT_CORE_TOOL_NAMES.has(name))
+          ? isCoreToolInMode(name, "contract") || this.isPlanSafePluginTool(name)
+          : isCoreToolInMode(name, "chat"))
     );
   }
 

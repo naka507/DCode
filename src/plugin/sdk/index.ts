@@ -100,6 +100,11 @@ export type PluginManifest = {
       description: string;
       risk?: "low" | "medium" | "high";
       /**
+       * Permission scope for the tool contract (ADR-002). Optional for
+       * backward compatibility; defaults to "execute" when omitted.
+       */
+      scope?: "read" | "write" | "execute" | "network";
+      /**
        * Action names that may run in Plan or Goal mode. Omitted or empty
        * means the tool is hidden from the model in those modes (ADR 0211).
        * Only meaningful when the schema has an `action` enum and every
@@ -1853,6 +1858,64 @@ export function validateContributions(
       if (typeof pattern !== "string" || !isValidBusTopicPattern(pattern)) {
         return `contributes.bus.subscribe pattern "${String(pattern)}" is not valid`;
       }
+    }
+  }
+
+  // ADR-002 Phase C: plugin-declared agent tools are validated here so a
+  // malformed tool declaration fails at install/load time, not when the
+  // model first tries to call it.
+  const agentTools = contributes.agentTools ?? [];
+  if (!Array.isArray(agentTools)) return "contributes.agentTools must be an array";
+  const agentToolNames = new Set<string>();
+  for (const tool of agentTools) {
+    if (!tool || typeof tool !== "object" || Array.isArray(tool)) {
+      return "contributes.agentTools entries must be objects";
+    }
+    if (
+      typeof tool.name !== "string" ||
+      !/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(tool.name)
+    ) {
+      return "contributes.agentTools entries need a name matching [a-zA-Z][a-zA-Z0-9_-]{0,63}";
+    }
+    if (agentToolNames.has(tool.name)) {
+      return `duplicate agent tool name "${tool.name}"`;
+    }
+    agentToolNames.add(tool.name);
+    if (typeof tool.description !== "string" || !tool.description.trim()) {
+      return `agent tool "${tool.name}" requires a description`;
+    }
+    if (
+      tool.risk !== undefined &&
+      tool.risk !== "low" &&
+      tool.risk !== "medium" &&
+      tool.risk !== "high"
+    ) {
+      return `agent tool "${tool.name}" risk must be "low", "medium" or "high"`;
+    }
+    if (
+      tool.scope !== undefined &&
+      tool.scope !== "read" &&
+      tool.scope !== "write" &&
+      tool.scope !== "execute" &&
+      tool.scope !== "network"
+    ) {
+      return `agent tool "${tool.name}" scope must be "read", "write", "execute" or "network"`;
+    }
+    if (tool.planSafeActions !== undefined) {
+      if (!Array.isArray(tool.planSafeActions)) {
+        return `agent tool "${tool.name}" planSafeActions must be an array`;
+      }
+      for (const action of tool.planSafeActions) {
+        if (typeof action !== "string" || !action.trim()) {
+          return `agent tool "${tool.name}" planSafeActions entries must be non-empty strings`;
+        }
+      }
+    }
+    if (
+      tool.schema !== undefined &&
+      (typeof tool.schema !== "object" || tool.schema === null || Array.isArray(tool.schema))
+    ) {
+      return `agent tool "${tool.name}" schema must be an object`;
     }
   }
 

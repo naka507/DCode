@@ -24,6 +24,11 @@ export type UserMcpToolDescriptor = {
   toolName: string;
   description: string;
   schema?: unknown;
+  /**
+   * Resolved tool risk for the tool contract (ADR-002 Phase C): the
+   * server's per-tool override when present, otherwise "medium".
+   */
+  risk: "low" | "medium" | "high";
 };
 
 /** The slice of {@link McpServerClient} this runtime drives. */
@@ -151,12 +156,22 @@ export class UserMcpRuntime {
     const out: UserMcpToolDescriptor[] = [];
     admitted.forEach((record, index) => {
       for (const tool of lists[index]) {
+        // ADR-002 Phase C: MCP tool semantics are not controlled by us, so
+        // risk defaults to "medium"; a per-tool override on the server
+        // record may raise or lower it. Unknown values fall back to the
+        // default rather than failing the whole discovery.
+        const override = record.toolRiskOverrides?.[tool.name];
+        const risk =
+          override === "low" || override === "medium" || override === "high"
+            ? override
+            : "medium";
         out.push({
           fullName: userMcpToolName(record.id, tool.name),
           serverId: record.id,
           toolName: tool.name,
           description: tool.description ?? `${record.label} tool "${tool.name}" (MCP)`,
           schema: tool.inputSchema,
+          risk,
         });
       }
     });
@@ -278,12 +293,17 @@ export class UserMcpRuntime {
     for (const [serverId, tools] of this.discoveredTools) {
       for (const tool of tools) {
         if (userMcpToolName(serverId, tool.name) === fullName) {
+          const override = this.records.find((r) => r.id === serverId)?.toolRiskOverrides?.[tool.name];
           return {
             fullName,
             serverId,
             toolName: tool.name,
             description: tool.description ?? tool.name,
             schema: tool.inputSchema,
+            risk:
+              override === "low" || override === "medium" || override === "high"
+                ? override
+                : "medium",
           };
         }
       }

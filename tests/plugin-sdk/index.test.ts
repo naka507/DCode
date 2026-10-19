@@ -779,6 +779,60 @@ describe("contributes.providers", () => {
       /requires a name/,
     );
   });
+
+  it("validates agentTools declarations (ADR-002 Phase C)", () => {
+    const good = {
+      name: "echo_text",
+      description: "Echo text back.",
+      risk: "low" as const,
+      scope: "read" as const,
+      planSafeActions: ["echo"],
+      schema: { type: "object" },
+    };
+    expect(validateContributions({ agentTools: [good] })).toBeUndefined();
+    // Minimal entry: only name + description are required.
+    expect(
+      validateContributions({
+        agentTools: [{ name: "do_thing", description: "Does a thing." }],
+      }),
+    ).toBeUndefined();
+    expect(validateContributions({ agentTools: "nope" })).toMatch(/must be an array/);
+    expect(validateContributions({ agentTools: [null] })).toMatch(/must be objects/);
+    expect(
+      validateContributions({ agentTools: [{ name: "1bad", description: "x" }] }),
+    ).toMatch(/need a name matching/);
+    expect(
+      validateContributions({ agentTools: [{ name: "ok", description: "  " }] }),
+    ).toMatch(/requires a description/);
+    expect(
+      validateContributions({
+        agentTools: [
+          { name: "dup", description: "x" },
+          { name: "dup", description: "y" },
+        ],
+      }),
+    ).toMatch(/duplicate agent tool name/);
+    expect(
+      validateContributions({
+        agentTools: [{ name: "ok", description: "x", risk: "extreme" }],
+      }),
+    ).toMatch(/risk must be/);
+    expect(
+      validateContributions({
+        agentTools: [{ name: "ok", description: "x", scope: "root" }],
+      }),
+    ).toMatch(/scope must be/);
+    expect(
+      validateContributions({
+        agentTools: [{ name: "ok", description: "x", planSafeActions: "echo" }],
+      }),
+    ).toMatch(/planSafeActions must be an array/);
+    expect(
+      validateContributions({
+        agentTools: [{ name: "ok", description: "x", schema: [] }],
+      }),
+    ).toMatch(/schema must be an object/);
+  });
 });
 
 describe("manifest i18n", () => {
