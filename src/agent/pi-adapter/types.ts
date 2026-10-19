@@ -48,4 +48,15 @@ export type {
   Usage,
   UserMessage,
 } from "@earendil-works/pi-ai";
+import type { AssistantMessage } from "@earendil-works/pi-ai";
 export type { SessionManager } from "@earendil-works/pi-coding-agent";
+
+/**
+ * DCode's view of a pi-ai AssistantMessage, extended with the fields DCode's
+ * pi patches add (hosted search passthrough). Use this instead of `as any`
+ * when accessing message fields in the event handler.
+ */
+export type DCodeAssistantMessage = AssistantMessage & {
+  /** Added by DCode's pi patch: citations from hosted search results. */
+  hostedSearchCitations?: unknown;
+};
