@@ -17,7 +17,7 @@ import type {
   Model,
   Models,
   ModelsSimpleStreamOptions,
-} from "@earendil-works/pi-ai";
+} from "../pi-adapter/index.js";
 import {
   openCodeEndpointFromProvider,
   withOpenCodeSessionHeaders,

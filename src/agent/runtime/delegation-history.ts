@@ -28,7 +28,7 @@ import type {
   Api,
   ToolResultMessage,
   UserMessage,
-} from "@earendil-works/pi-ai";
+} from "../pi-adapter/index.js";
 import {
   MAX_RESUMABLE_LISTED_FILES,
   MAX_RESUMABLE_READ_LINES,

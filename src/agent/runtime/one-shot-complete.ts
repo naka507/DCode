@@ -10,7 +10,7 @@ import type {
   Context,
   Model,
   SimpleStreamOptions,
-} from "@earendil-works/pi-ai";
+} from "../pi-adapter/index.js";
 import type { MessageUsage, ThinkingLevel } from "@dcode/shared";
 import { classifyAgentError } from "./agent-errors.js";
 import { assistantContent, usageFromPi } from "./agent-messages.js";
