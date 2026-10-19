@@ -89,7 +89,7 @@ export class Host {
     this.exitPromise = Promise.resolve();
   }
 
-  async start(protocolVersion = 11) {
+  async start(protocolVersion = 12) {
     if (this.child) throw new Error("host is already running");
     this.pending = new Map();
     this.notifications = [];
@@ -220,7 +220,7 @@ export class Host {
     if (!this.exited) throw new Error("host did not exit during cleanup");
   }
 
-  async restart(protocolVersion = 11) {
+  async restart(protocolVersion = 12) {
     await this.stop();
     await this.start(protocolVersion);
   }

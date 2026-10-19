@@ -8,7 +8,7 @@ export async function withScenario(
   fn,
   binary,
   tempRoot,
-  protocolVersion = 11,
+  protocolVersion = 12,
 ) {
   const scenarioRoot = await mkdtemp(join(tempRoot, id.toLowerCase() + "-"));
   const dataDir = join(scenarioRoot, "data");
