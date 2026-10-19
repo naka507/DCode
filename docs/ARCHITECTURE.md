@@ -614,7 +614,7 @@ Agent-IR replacement is future work.
 ### ADR-007: Protocol contract
 
 `protocol/contract.json` is the single source of truth for the DCode↔DCore
-protocol: version 12, 101 DCore RPC methods, prefix-routed
+protocol: version 12, 163 DCore RPC methods, prefix-routed
 `session.collaboration.*`, host-proxy `extensions.*`. `npm run
 check:protocol` verifies DCode's `PROTOCOL_VERSION`, DCore's `state.rs`
 version, the method inventory against `rpc/mod.rs`, and every
