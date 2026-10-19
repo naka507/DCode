@@ -1988,6 +1988,12 @@ Delegation rules:
         this.logEventHandlerFailure(event, error);
       }),
     );
+
+    // The agent needs its tools and system prompt from construction; setMode()
+    // re-applies them on mode changes, but a runtime used without a subsequent
+    // setMode() call (e.g. eval) would otherwise have no tools.
+    this.agent.state.tools = this.activeTools();
+    this.agent.state.systemPrompt = this.composeSystemPrompt();
   }
 
   private logEventHandlerFailure(event: AgentEvent, error: unknown): void {
