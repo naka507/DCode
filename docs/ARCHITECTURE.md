@@ -1,6 +1,6 @@
 # dcode architecture
 
-`dcode` is a shipped desktop agent application, version `1.0.8`
+`dcode` is a shipped desktop agent application, version `1.1.0`
 (`package.json`, agreed by `APP_VERSION` in `src/shared/protocol.ts`).
 
 This document records the parts of the architecture that are not recoverable
