@@ -650,6 +650,9 @@ export function createSessionLaunchRuntime({
             name: tool.fullName,
             description: tool.description,
             parameters: tool.schema ?? { type: "object", properties: {} },
+            // ADR-002 Phase C: MCP tools carry their resolved risk
+            // (per-tool override or "medium" default) like plugin tools do.
+            risk: tool.risk,
           })),
         ],
         // Plugin skills (D174): only the catalog crosses to the sidecar; the

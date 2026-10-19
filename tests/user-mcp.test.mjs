@@ -124,6 +124,29 @@ test("a project-scoped server is invisible outside its projects", async (t) => {
   assert.equal((await rt.toolsForProject("/repo/apps/web")).length, 2);
 });
 
+test("mcp tools default to medium risk unless the server overrides it", async (t) => {
+  const dir = stubDir();
+  const rt = runtime(t);
+  rt.setRecords([
+    stubRecord(dir, {
+      toolRiskOverrides: { lookup: "low", ping: "high" },
+    }),
+  ]);
+
+  const tools = await rt.toolsForProject("/repo");
+  assert.equal(tools.find((tool) => tool.toolName === "lookup").risk, "low");
+  assert.equal(tools.find((tool) => tool.toolName === "ping").risk, "high");
+});
+
+test("mcp tools without an override default to medium risk", async (t) => {
+  const dir = stubDir();
+  const rt = runtime(t);
+  rt.setRecords([stubRecord(dir)]);
+
+  const tools = await rt.toolsForProject("/repo");
+  for (const tool of tools) assert.equal(tool.risk, "medium");
+});
+
 test("a disabled server contributes nothing and is never connected", async (t) => {
   const dir = stubDir();
   const rt = runtime(t);

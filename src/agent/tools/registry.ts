@@ -15,8 +15,10 @@
  * Later phases:
  * - Phase B: DCore serves `tools.describe`; the sidecar builds DCore tool
  *   entries from that manifest instead of hardcoded descriptions.
- * - Phase C: plugin manifest `tools[]` declarations + MCP risk overrides;
- *   the hardcoded name sets in `runtime.ts` are derived from this registry.
+ * - Phase C: plugin manifest `tools[]` declarations (`toPluginToolContract`)
+ *   + MCP risk overrides (`toMcpToolContract`); the hardcoded name sets in
+ *   `runtime.ts` are derived from this registry (`isPathMutatingTool`,
+ *   `isCoreToolInMode`).
  */
 
 /** Where a tool implementation comes from. */
@@ -232,4 +234,110 @@ export function validateToolDeclarations(names: Iterable<string>): string[] {
  */
 export function isPathMutatingTool(name: string): boolean {
   return TOOL_PERMISSION_DECLARATIONS[name]?.scope === "write";
+}
+
+/**
+ * Modes that treat a tool as "core": always in context, never deferred to
+ * the on-demand tool search. Replaces the hardcoded CHAT_CORE_TOOL_NAMES /
+ * AGENT_CORE_TOOL_NAMES sets in `runtime.ts` (ADR-002 Phase C).
+ *
+ * "asktool" is the literal value of ASK_TOOL_NAME (runtime.ts); the
+ * registry stays import-free of the runtime module, so the literal is
+ * repeated here with this pointer instead of an import.
+ */
+export type ToolCoreMode = "agent" | "chat" | "contract";
+
+export const CORE_TOOL_MODES: Record<string, ToolCoreMode[]> = {
+  Read: ["agent", "chat", "contract"],
+  Write: ["agent"],
+  Edit: ["agent"],
+  Bash: ["agent", "contract"],
+  Glob: ["chat", "contract"],
+  Grep: ["chat", "contract"],
+  BrowserPreview: ["contract"],
+  // ASK_TOOL_NAME
+  asktool: ["agent", "chat", "contract"],
+  // SKILL_TOOL_NAME
+  Skill: ["agent"],
+};
+
+/** True when `name` is a core tool for `mode` (see CORE_TOOL_MODES). */
+export function isCoreToolInMode(name: string, mode: ToolCoreMode): boolean {
+  return CORE_TOOL_MODES[name]?.includes(mode) ?? false;
+}
+
+/**
+ * A plugin manifest `contributes.agentTools[]` entry, as validated by
+ * `validateContributions` in `src/plugin/sdk/index.ts`.
+ */
+export interface PluginToolManifestEntry {
+  name: string;
+  description: string;
+  risk?: ToolPermissionRisk;
+  scope?: ToolPermissionScope;
+  planSafeActions?: readonly string[];
+  schema?: unknown;
+}
+
+/**
+ * Convert a plugin manifest tool entry to the Tool contract.
+ *
+ * The name is namespaced `plugin_<pluginId>_<name>`, matching the runtime's
+ * existing `plugin_` prefix convention. Third-party plugin code is
+ * untrusted: scope defaults to "execute" and risk defaults to "medium"
+ * (never silently low); idempotency and dry-run are conservatively false.
+ */
+export function toPluginToolContract(
+  pluginId: string,
+  def: PluginToolManifestEntry,
+): ToolDefinition {
+  return {
+    name: `plugin_${pluginId}_${def.name}`,
+    source: "plugin",
+    description: def.description,
+    inputSchema:
+      def.schema !== undefined && typeof def.schema === "object" && def.schema !== null
+        ? (def.schema as Record<string, unknown>)
+        : {},
+    permission: {
+      scope: def.scope ?? "execute",
+      risk: def.risk ?? "medium",
+    },
+    idempotent: false,
+    supportsDryRun: false,
+  };
+}
+
+/**
+ * Convert an MCP server tool to the Tool contract.
+ *
+ * ADR-002: MCP tool semantics are not controlled by us, so risk defaults
+ * to "medium"; a per-tool override on the server record
+ * (`toolRiskOverrides`) may raise or lower it. Scope is "execute": the
+ * tool runs third-party code through the MCP transport.
+ */
+export function toMcpToolContract(
+  serverId: string,
+  toolName: string,
+  def: {
+    description: string;
+    schema?: unknown;
+    riskOverride?: ToolPermissionRisk;
+  },
+): ToolDefinition {
+  return {
+    name: `mcp_${serverId}_${toolName}`,
+    source: "mcp",
+    description: def.description,
+    inputSchema:
+      def.schema !== undefined && typeof def.schema === "object" && def.schema !== null
+        ? (def.schema as Record<string, unknown>)
+        : {},
+    permission: {
+      scope: "execute",
+      risk: def.riskOverride ?? "medium",
+    },
+    idempotent: false,
+    supportsDryRun: false,
+  };
 }

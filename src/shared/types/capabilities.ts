@@ -64,6 +64,12 @@ export type McpServerRecord = {
   headers?: Record<string, string>;
   enabled: boolean;
   scope?: ActivationScope;
+  /**
+   * Per-tool risk overrides for the tool contract (ADR-002 Phase C),
+   * keyed by the server's tool name. Tools without an override default
+   * to "medium" — MCP tool semantics are not controlled by us.
+   */
+  toolRiskOverrides?: Record<string, "low" | "medium" | "high">;
   createdAt: string;
   updatedAt: string;
 };
@@ -83,6 +89,7 @@ export type McpServerInput = {
   headers?: Record<string, string>;
   enabled?: boolean;
   scope?: ActivationScope;
+  toolRiskOverrides?: Record<string, "low" | "medium" | "high">;
 };
 
 export type McpConnectionState = "idle" | "connecting" | "ready" | "failed";
