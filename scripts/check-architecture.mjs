@@ -239,11 +239,6 @@ const piAdapterGrandfathered = new Set([
   "src/agent/runtime/extensions/runner.ts",
   "src/agent/runtime/native-pi-session.ts",
   "src/agent/runtime/prompt-templates.ts",
-  "src/agent/runtime/one-shot-complete.ts",
-  "src/agent/runtime/prompt-enhancement.ts",
-  "src/agent/runtime/session-title-summarize.ts",
-  "src/agent/runtime/delegation-history.ts",
-  "src/agent/runtime/compaction-request.ts",
   "src/main/oauth.ts",
 ]);
 for (const entry of metrics) {

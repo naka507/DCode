@@ -4,7 +4,7 @@ import type {
   Context,
   Model,
   SimpleStreamOptions,
-} from "@earendil-works/pi-ai";
+} from "../pi-adapter/index.js";
 import type { ThinkingLevel } from "@dcode/shared";
 import {
   PROMPT_ENHANCEMENT_DEFAULT_SYSTEM_PROMPT,
