@@ -516,7 +516,15 @@ npm run build:sidecar
 
 node scripts/check-architecture.mjs
 node scripts/check-agent-policy-sync.mjs
+npm run check:protocol
 ```
+
+`.github/workflows/ci.yml` runs the fast gates on every push to `main` and
+every pull request: typecheck, lint, both test suites, the architecture and
+policy-sync checks, and `npm run check:protocol`. The protocol check
+cross-references the DCore checkout via `DCORE_REPO`; CI checks out the
+private `naka507/DCore` repo when a `DCORE_REPO_TOKEN` secret (read access)
+is configured, and otherwise runs the DCode-side assertions with a warning.
 
 Run the minimum sufficient set for the surface changed. `npm run test:e2e` and
 the targeted `npm run test:e2e:*` scripts start or attach to a Desktop instance

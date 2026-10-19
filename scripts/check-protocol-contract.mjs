@@ -58,7 +58,13 @@ if (!existsSync(stateRs) || !existsSync(rpcModRs)) {
 
   const rpcSrc = readFileSync(rpcModRs, "utf8");
   const dcoreMethods = new Set(
-    [...rpcSrc.matchAll(/"\s*([a-z][a-z0-9_.-]+)"\s*=>/g)].map((m) => m[1]),
+    // RPC methods are dot-namespaced ("session.beginTurn"); the dot
+    // requirement excludes error codes, tool names, and enum values that
+    // share the `"..." =>` shape. Case-insensitive: most methods are
+    // camelCase ("turn.appendEvent").
+    [...rpcSrc.matchAll(/"\s*([a-zA-Z][a-zA-Z0-9_.-]*\.[a-zA-Z0-9_.-]+)"\s*=>/g)].map(
+      (m) => m[1],
+    ),
   );
   // Prefix-routed methods (e.g. session.collaboration.*) have no exact match
   // arm; the contract lists the concrete ones DCode calls.
@@ -101,7 +107,8 @@ const calledMethods = new Set();
 for (const file of walk(join(root, "src"))) {
   const src = readFileSync(file, "utf8");
   for (const m of src.matchAll(
-    /(?:host|transport)\.call(?:<[^>]*>)?\(\s*"([a-z][a-z0-9_.-]+)"/g,
+    // Case-insensitive: DCode calls camelCase methods ("turn.appendEvent").
+    /(?:host|transport)\.call(?:<[^>]*>)?\(\s*"([a-zA-Z][a-zA-Z0-9_.-]+)"/g,
   )) {
     calledMethods.add(m[1]);
   }
