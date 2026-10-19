@@ -8,6 +8,10 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # `secrets` cannot appear in a step `if:` expression (the workflow file
+    # fails parsing), so expose it through `env` first.
+    env:
+      DCORE_REPO_TOKEN: ${{ secrets.DCORE_REPO_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -21,7 +25,7 @@ jobs:
       # PAT with read access to naka507/DCore). Without it, check:protocol
       # still runs the DCode-side assertions and warns about the skip.
       - name: Check out DCore
-        if: secrets.DCORE_REPO_TOKEN != ''
+        if: env.DCORE_REPO_TOKEN != ''
         uses: actions/checkout@v4
         with:
           repository: naka507/DCore
