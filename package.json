@@ -56,7 +56,7 @@
     "test:e2e:provider-api-style": "node scripts/e2e-provider-api-style.mjs",
     "test:e2e:provider-ipc-payload": "node scripts/e2e-provider-ipc-payload.mjs",
     "test:e2e:provider-order": "node scripts/e2e-provider-order.mjs",
-    "eval": "node --experimental-strip-types scripts/run-evals.mjs",
+    "eval": "node --experimental-transform-types --import ./tests/helpers/register-hooks.mjs scripts/run-evals.mjs",
     "check:protocol": "node scripts/check-protocol-contract.mjs"
   },
   "dependencies": {

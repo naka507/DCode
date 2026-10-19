@@ -7,7 +7,7 @@
  *
  * Provider config: evals/provider.json (gitignored) or the
  * DCODE_EVAL_PROVIDER_JSON env var, as a RuntimeProviderConfig JSON object.
- * DCore binary: --dcore flag, DCODE_EVAL_DCORE env, or ./target/debug/dcore
+ * DCore binary: --dcore flag, DCODE_EVAL_DCORE env, or ./target/debug/DCore
  * relative to the DCore checkout (override as needed).
  */
 import { readdir, readFile } from "node:fs/promises";
@@ -36,14 +36,20 @@ async function main() {
   }
   const provider = JSON.parse(providerJson);
 
-  // DCore binary.
+  // DCore binary. The cargo package name is `DCore`, so the debug binary is
+  // `DCore` (or `DCore.exe` on Windows); accept the lowercase `dcore` too
+  // for checkouts that renamed it.
   const dcoreIdx = args.indexOf("--dcore");
-  const dcoreBinaryPath =
-    (dcoreIdx !== -1 ? args[dcoreIdx + 1] : undefined) ??
-    process.env.DCODE_EVAL_DCORE ??
-    join(process.env.HOME ?? "", "workspace", "repos", "DCore", "target", "debug", "dcore");
-  if (!existsSync(dcoreBinaryPath)) {
-    console.error(`DCore binary not found at ${dcoreBinaryPath}. Build it (cargo build in the DCore repo) or pass --dcore <path>.`);
+  const dcoreCandidates = [
+    (dcoreIdx !== -1 ? args[dcoreIdx + 1] : undefined),
+    process.env.DCODE_EVAL_DCORE,
+    join(process.env.HOME ?? "", "workspace", "repos", "DCore", "target", "debug", "DCore"),
+    join(process.env.HOME ?? "", "workspace", "repos", "DCore", "target", "debug", "DCore.exe"),
+    join(process.env.HOME ?? "", "workspace", "repos", "DCore", "target", "debug", "dcore"),
+  ].filter(Boolean);
+  const dcoreBinaryPath = dcoreCandidates.find((p) => existsSync(p));
+  if (!dcoreBinaryPath) {
+    console.error(`DCore binary not found. Tried: ${dcoreCandidates.join(", ")}. Build it (cargo build in the DCore repo) or pass --dcore <path>.`);
     process.exit(2);
   }
 
