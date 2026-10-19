@@ -370,6 +370,19 @@ export function createHostRuntime({
         data: String(error),
       });
     }
+    // Retention pruning for the turn_events table (ADR-001 follow-up).
+    // Best-effort: older DCore builds predate turn.pruneEvents and answer
+    // with an unknown-method error, which must not break startup.
+    try {
+      const pruned = await h.call("turn.pruneEvents");
+      logger.app("runtime", "info", "turn event retention pruning done", {
+        data: pruned,
+      });
+    } catch (error) {
+      logger.app("runtime", "warn", "turn event retention pruning failed", {
+        data: String(error),
+      });
+    }
   } catch (error) {
     if (runtimeState.host === h) runtimeState.host = null;
     logger.flushChild("host");
