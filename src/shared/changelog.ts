@@ -25,6 +25,16 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "1.1.0",
+    date: "2026-10-19",
+    highlights: [
+      "Nine new built-in skills: Rust, TypeScript, and SQLite best practices; systematic debugging and code review checklists; eval task authoring; plus Cloudflare, GitHub, and Electron project conventions.",
+      "Three new built-in extensions: GitHub PR Assistant (create, view, check CI, merge PRs), Git Helper (read-only git introspection), and Web Fetch (URL to plain text for research).",
+      "Agent runtime performance: system prompt composition is now cached with an input fingerprint instead of rebuilt every turn.",
+      "Replaced remaining `as any` casts on agent event messages with a typed `DCodeAssistantMessage` in the pi adapter.",
+    ],
+  },
+  {
     version: "1.0.8",
     date: "2026-10-01",
     highlights: [
@@ -126,6 +136,16 @@ const enEntries: ChangelogEntry[] = [
 ];
 
 const zhCNEntries: ChangelogEntry[] = [
+  {
+    version: "1.1.0",
+    date: "2026-10-19",
+    highlights: [
+      "新增 9 个内置技能：Rust、TypeScript、SQLite 最佳实践；系统化调试与代码审查清单；eval 任务编写指南；以及 Cloudflare、GitHub、Electron 项目规范。",
+      "新增 3 个内置扩展：GitHub PR 助手（创建、查看、查 CI、合并 PR）、Git 助手（只读的 git 状态查看）、网页抓取（URL 转纯文本做调研）。",
+      "Agent 运行时性能优化：系统提示词改为按输入指纹缓存，不再每轮全量重建。",
+      "pi adapter 新增 `DCodeAssistantMessage` 类型，替换 agent 事件处理中剩余的 `as any` 断言。",
+    ],
+  },
   {
     version: "1.0.8",
     date: "2026-10-01",
