@@ -162,6 +162,7 @@
     "turn.appendEvent",
     "turn.get",
     "turn.listEvents",
+    "turn.pruneEvents",
     "workspace.clear",
     "workspace.get",
     "workspace.set"
