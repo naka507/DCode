@@ -36,6 +36,7 @@ import {
 import {
   estimateContextTokens,
   estimateTokens,
+  type DCodeAssistantMessage,
 } from "../pi-adapter/index.js";
 // ADR-002 Phase A: builtin tool name lists live in the tool registry module.
 // Behavior-preserving extraction; the runtime still owns the catalog.
@@ -1542,6 +1543,9 @@ export class DesktopAgentRuntime {
   /** The prompt this runtime composed last, so a mid-turn refresh can tell its
    * own prompt from a transient variant it must not clobber. */
   private composedSystemPrompt?: string;
+  /** Fingerprint of the inputs used to build composedSystemPrompt; when the
+   * fingerprint matches, the cached prompt is returned without rebuilding. */
+  private composedSystemPromptFingerprint?: string;
   /** Set when a refresh was skipped because a transient prompt variant owned the
    * live prompt; that variant's cleanup applies it once the prompt is restored. */
   private resumablePromptStale = false;
@@ -2041,17 +2045,25 @@ Delegation rules:
             runningDelegationIds: this.runningDelegationIds(),
           })
         : "";
-    const composed = composeModeSystemPrompt(
-      this.mode,
-      [
-        this.baseSystemPrompt,
-        ...(optionalToolsPrompt ? [optionalToolsPrompt] : []),
-        ...(projectPrompt ? [projectPrompt] : []),
-        ...(memoryPrompt ? [memoryPrompt] : []),
-        ...(resumablePrompt ? [resumablePrompt] : []),
-      ].join("\n\n"),
-    );
+    const parts = [
+      this.baseSystemPrompt,
+      ...(optionalToolsPrompt ? [optionalToolsPrompt] : []),
+      ...(projectPrompt ? [projectPrompt] : []),
+      ...(memoryPrompt ? [memoryPrompt] : []),
+      ...(resumablePrompt ? [resumablePrompt] : []),
+    ];
+    // Fingerprint the inputs; when nothing changed, return the cached prompt
+    // without rebuilding the final string.
+    const fingerprint = `${this.mode}\0${parts.join("\0")}`;
+    if (
+      fingerprint === this.composedSystemPromptFingerprint &&
+      this.composedSystemPrompt !== undefined
+    ) {
+      return this.composedSystemPrompt;
+    }
+    const composed = composeModeSystemPrompt(this.mode, parts.join("\n\n"));
     this.composedSystemPrompt = composed;
+    this.composedSystemPromptFingerprint = fingerprint;
     return composed;
   }
 
@@ -7000,7 +7012,7 @@ Delegation rules:
         if (event.message.role === "assistant") {
           this.clearAgentActivity();
           this.streamStartedAt = Date.now();
-          const content = assistantContent((event.message as any).content);
+          const content = assistantContent((event.message as DCodeAssistantMessage).content);
           const retryingAssistant =
             this.providerRetryInProgress ||
             this.silentTurnRerunInProgress ||
@@ -7047,7 +7059,7 @@ Delegation rules:
       case "message_update": {
         if (this.currentAssistant && event.message.role === "assistant") {
           this.applyHostedSearch(event.message);
-          const content = assistantContent((event.message as any).content);
+          const content = assistantContent((event.message as DCodeAssistantMessage).content);
           const previousText = this.currentAssistant.content;
           const previousThinking = this.currentAssistant.thinking ?? "";
           const nextText = content.hasText ? content.text : previousText;
@@ -7110,11 +7122,11 @@ Delegation rules:
         }
         if (this.currentAssistant && event.message.role === "assistant") {
           const assistantId = this.currentAssistant.id;
-          const content = assistantContent((event.message as any).content);
+          const content = assistantContent((event.message as DCodeAssistantMessage).content);
           // pi-agent-core encodes stream failures in the final message
           // (stopReason "error"/"aborted" + errorMessage) and resolves the
           // prompt normally, so this is where provider/model errors surface.
-          const stopReason = (event.message as any).stopReason as
+          const stopReason = (event.message as DCodeAssistantMessage).stopReason as
             | string
             | undefined;
           const overflow = isContextOverflow(
@@ -7125,9 +7137,9 @@ Delegation rules:
           const aborted = stopReason === "aborted";
           const errorMessage =
             failed &&
-            typeof (event.message as any).errorMessage === "string" &&
-            (event.message as any).errorMessage
-              ? ((event.message as any).errorMessage as string)
+            typeof (event.message as DCodeAssistantMessage).errorMessage === "string" &&
+            (event.message as DCodeAssistantMessage).errorMessage
+              ? ((event.message as DCodeAssistantMessage).errorMessage as string)
               : failed
                 ? "provider stream failed"
                 : undefined;
@@ -7162,7 +7174,7 @@ Delegation rules:
               `[agent-runtime] assistant emitted a tool call as text (session=${this.sessionId} turn=${this.turnId})\n`,
             );
           }
-          const usage = usageFromPi((event.message as any).usage as Usage | undefined);
+          const usage = usageFromPi((event.message as DCodeAssistantMessage).usage as Usage | undefined);
           if (
             usage &&
             usage.reasoningTokens === undefined &&
@@ -7191,8 +7203,8 @@ Delegation rules:
             nextThinking,
           });
           const hostedSearch = hostedSearchFromMessage({
-            content: (event.message as any).content,
-            citations: (event.message as any).hostedSearchCitations,
+            content: (event.message as DCodeAssistantMessage).content,
+            citations: (event.message as DCodeAssistantMessage).hostedSearchCitations,
           });
           if (hostedSearch) {
             const terminal = failed || aborted ? "failed" : "completed";
