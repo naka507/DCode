@@ -121,6 +121,42 @@ export const BUILTIN_SKILLS_MANIFEST: readonly BuiltinSkillManifestItem[] = [
     id: "dcode/electron",
     file: "electron.md",
   },
+  {
+    id: "dcode/rust-best-practices",
+    file: "rust-best-practices.md",
+  },
+  {
+    id: "dcode/code-review",
+    file: "code-review.md",
+  },
+  {
+    id: "dcode/eval-task-authoring",
+    file: "eval-task-authoring.md",
+  },
+  {
+    id: "dcode/debugging",
+    file: "debugging.md",
+  },
+  {
+    id: "dcode/typescript-best-practices",
+    file: "typescript-best-practices.md",
+  },
+  {
+    id: "dcode/sqlite",
+    file: "sqlite.md",
+  },
+  {
+    id: "dcode/cloudflare",
+    file: "cloudflare.md",
+  },
+  {
+    id: "dcode/github",
+    file: "github.md",
+  },
+  {
+    id: "dcode/electron-conventions",
+    file: "electron-conventions.md",
+  },
 ];
 
 /**

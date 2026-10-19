@@ -19,7 +19,7 @@ describe("builtinSkills", () => {
 
   it("listAllBuiltinSkills returns all shipped skills with body and metadata", () => {
     const all = listAllBuiltinSkills();
-    expect(all.length).toBe(6);
+    expect(all.length).toBe(15);
     const ids = all.map((s) => s.id);
     expect(ids).toContain("dcode/react-best-practices");
     expect(ids).toContain("dcode/vue-best-practices");
@@ -27,6 +27,15 @@ describe("builtinSkills", () => {
     expect(ids).toContain("dcode/dogfood");
     expect(ids).toContain("dcode/electron");
     expect(ids).toContain("dcode/plugin-development");
+    expect(ids).toContain("dcode/rust-best-practices");
+    expect(ids).toContain("dcode/code-review");
+    expect(ids).toContain("dcode/eval-task-authoring");
+    expect(ids).toContain("dcode/debugging");
+    expect(ids).toContain("dcode/typescript-best-practices");
+    expect(ids).toContain("dcode/sqlite");
+    expect(ids).toContain("dcode/cloudflare");
+    expect(ids).toContain("dcode/github");
+    expect(ids).toContain("dcode/electron-conventions");
     for (const item of all) {
       expect(item.name).toBeTruthy();
       expect(item.description).toBeTruthy();
