@@ -21,15 +21,15 @@
 
 import { randomUUID } from "node:crypto";
 import {
-  Agent,
+  PiAgentBackend,
   convertToLlm,
   type AfterToolCallContext,
   type AfterToolCallResult,
   type AgentEvent,
   type AgentMessage,
   type AgentTool,
-} from "@earendil-works/pi-agent-core";
-import type { AssistantMessage } from "@earendil-works/pi-ai";
+} from "../pi-adapter/index.js";
+import type { AssistantMessage } from "../pi-adapter/index.js";
 import {
   addUsage,
   cumulativeDelta,
@@ -221,7 +221,7 @@ export { addUsage };
 /** One delegate execution. A resumed run is still a new instance; it is
  * seeded with the prior chain's messages rather than kept warm in memory. */
 export class SubagentRun {
-  private readonly agent: Agent;
+  private readonly agent: PiAgentBackend;
   private readonly opts: SubagentRunOptions;
   private currentAssistant?: UiMessage;
   private lastReportText = "";
@@ -259,7 +259,7 @@ export class SubagentRun {
       defaultSubagentMaxSteps(opts.definition.name);
     this.attemptedModels.add(`${opts.provider.id}/${opts.provider.modelId}`);
     const binding = this.modelBinding();
-    this.agent = new Agent({
+    this.agent = new PiAgentBackend({
       streamFn: binding.streamFn,
       getApiKey: binding.getApiKey,
       convertToLlm,

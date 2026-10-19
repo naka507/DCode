@@ -11,6 +11,7 @@
 export type {
   AgentMessage,
   AgentOptions,
+  AgentState,
   AgentTool,
   AgentToolResult,
   AfterToolCallContext,

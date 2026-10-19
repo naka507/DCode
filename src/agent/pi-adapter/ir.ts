@@ -91,6 +91,10 @@ export interface IrAgentState {
   isStreaming: boolean;
   /** True while a model request is in flight. */
   pendingModelRequest: boolean;
+  /** Active model identifier, when set. */
+  model?: string;
+  /** Thinking level/budget, provider-specific. */
+  thinkingLevel?: unknown;
 }
 
 /** Events the loop emits, mirroring the subscribed `AgentEvent` surface. */
