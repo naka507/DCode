@@ -2,7 +2,7 @@ export const PROTOCOL_VERSION = 12 as const;
 export const SCHEMA_VERSION = 16 as const;
 export const APP_ID = "net.dcode.app";
 export const APP_NAME = "DCode";
-export const APP_VERSION = "1.1.0";
+export const APP_VERSION = "1.2.0";
 
 export const APP_MENU_COMMANDS = [
   "newTask",

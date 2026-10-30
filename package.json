@@ -1,7 +1,7 @@
 {
   "name": "dcode",
   "description": "DCode \u2014 desktop workspace for AI coding agents (Electron shell + Vue 3 renderer)",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
