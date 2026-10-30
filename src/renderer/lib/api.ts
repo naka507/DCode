@@ -797,6 +797,11 @@ export const api = {
     invoke(IPC.invoke.agentAbort, { sessionId }),
   stop: (sessionId: string) =>
     invoke<AgentStopResponse>(IPC.invoke.agentStop, { sessionId }),
+  stopDelegation: (sessionId: string, delegationId: string) =>
+    invoke<{ stopped: boolean; status?: string }>(
+      IPC.invoke.agentStopDelegation,
+      { sessionId, delegationId },
+    ),
   queuePrompt: (req: AgentQueuePushRequest) =>
     invoke<QueuedTurnSummary>(IPC.invoke.agentQueuePush, req),
   listQueuedPrompts: (sessionId: string) =>

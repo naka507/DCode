@@ -76,6 +76,7 @@ export const IPC = {
     agentCompact: "dcode/agent/compact",
     agentAbort: "dcode/agent/abort",
     agentStop: "dcode/agent/stop",
+    agentStopDelegation: "dcode/agent/stop-delegation",
     agentQueuePush: "dcode/agent/queue/push",
     agentQueueList: "dcode/agent/queue/list",
     agentQueueRemove: "dcode/agent/queue/remove",

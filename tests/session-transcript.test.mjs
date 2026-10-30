@@ -40,6 +40,51 @@ test("a durable completed row remains authoritative over a stale live copy", () 
   assert.strictEqual(mergeLiveSessionMessages(durable, live), durable);
 });
 
+test("a settled live delegation row beats a durable row still showing running", () => {
+  const task = (status, content) =>
+    message("task-1", {
+      role: "tool",
+      toolCallId: "task-1",
+      toolName: "Task",
+      toolStatus: "success",
+      status: "complete",
+      content,
+      toolResult: {
+        content: [{ type: "text", text: `Delegation d1: ${status}.` }],
+        details: { delegationId: "d1", agent: "explore", status },
+      },
+    });
+  // Durable read raced the persistence outbox: the host still has the
+  // running snapshot while live already carries the settlement refresh.
+  const durable = [task("running", "started")];
+  const live = [task("completed", "settled")];
+
+  const merged = mergeLiveSessionMessages(durable, live);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].toolResult.details.status, "completed");
+  assert.equal(merged[0].content, "settled");
+});
+
+test("a durable settled delegation row stays authoritative over live", () => {
+  const task = (status) =>
+    message("task-1", {
+      role: "tool",
+      toolCallId: "task-1",
+      toolName: "Task",
+      toolStatus: "success",
+      status: "complete",
+      content: status,
+      toolResult: {
+        content: [{ type: "text", text: `Delegation d1: ${status}.` }],
+        details: { delegationId: "d1", agent: "explore", status },
+      },
+    });
+  const durable = [task("completed")];
+  const live = [task("running")];
+
+  assert.strictEqual(mergeLiveSessionMessages(durable, live), durable);
+});
+
 test("live-only terminal rows are retained when detail arrives during a turn", () => {
   const durable = [message("user", { role: "user", content: "prompt" })];
   const live = [

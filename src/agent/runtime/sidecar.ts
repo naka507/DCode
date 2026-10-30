@@ -615,6 +615,16 @@ async function handle(method: string, params: any): Promise<unknown> {
       const runtime = runtimes.get(sessionId);
       return runtime?.requestGracefulStop() ?? { requested: false };
     }
+    case "agent.stopDelegation": {
+      const sessionId = String(params.sessionId);
+      if (sessionId.startsWith(NATIVE_PI_SESSION_PREFIX)) {
+        return { stopped: false };
+      }
+      const runtime = runtimes.get(sessionId);
+      const delegationId = String(params.delegationId ?? "");
+      if (!runtime || !delegationId) return { stopped: false };
+      return runtime.stopDelegation(delegationId);
+    }
     case "asktool.resolve": {
       const sessionId = String(params.sessionId ?? "");
       const runtime = runtimes.get(sessionId);

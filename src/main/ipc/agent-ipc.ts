@@ -706,6 +706,22 @@ export function registerAgentIpc({
     return sidecar.call("agent.stop", req);
   });
 
+  handle(IPC.invoke.agentStopDelegation, async (req: {
+    sessionId: string;
+    delegationId: string;
+  }) => {
+    if (!sidecar) throw new Error("sidecar unavailable");
+    logger.app("session", "info", "subagent stop requested", {
+      sessionId: req.sessionId,
+      data: { delegationId: req.delegationId },
+    });
+    // Deliberately not a turn operation: stopping one delegation must leave
+    // the parent turn running, so no finishTurn, no session-tool cancellation,
+    // and no abort-reason lock here. The runtime settles just that delegation
+    // and refreshes its Task row; the parent converges on it through TaskWait.
+    return sidecar.call("agent.stopDelegation", req);
+  });
+
   handle(IPC.invoke.agentGetStatus, async (sessionId: string) => {
     if (!sidecar) throw new Error("sidecar unavailable");
     return sidecar.call("agent.getStatus", { sessionId });

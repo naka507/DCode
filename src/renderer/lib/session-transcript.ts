@@ -219,7 +219,13 @@ export function mergeLiveSessionMessages(
     const liveIndex = liveIndexById.get(durableMessage.id);
     const live =
       liveIndex === undefined ? undefined : liveNormalized[liveIndex];
-    push(live && isInFlightMessage(live) ? live : durableMessage);
+    push(
+      live &&
+        (isInFlightMessage(live) ||
+          isSettledDelegationNewer(live, durableMessage))
+        ? live
+        : durableMessage,
+    );
     // Live-only rows between two durable ids belong in the overlap. Trailing
     // rows after the last shared id wait until the durable page is complete
     // so a not-yet-cached user echo stays ahead of the streaming tail.
@@ -245,6 +251,77 @@ export function mergeLiveSessionMessages(
 
 function isInFlightMessage(message: UiMessage): boolean {
   return message.status === "streaming" || message.toolStatus === "running";
+}
+
+const DELEGATION_TERMINAL_STATUSES = new Set([
+  "completed",
+  "failed",
+  "timed_out",
+  "aborted",
+  "stopped",
+]);
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+/**
+ * A delegation Task row's identity and status, from its structured result or,
+ * for a durable row that kept only the JSON envelope in `content`, from there.
+ */
+function delegationSnapshotOf(
+  message: UiMessage,
+): { delegationId: string; status: string } | undefined {
+  const envelopes: unknown[] = [message.toolResult];
+  try {
+    envelopes.push(JSON.parse(message.content || ""));
+  } catch {
+    // Non-JSON content carries no delegation snapshot.
+  }
+  for (const envelope of envelopes) {
+    const details = asRecord(asRecord(envelope)?.details);
+    const delegationId = details?.delegationId;
+    const status = details?.status;
+    if (
+      typeof delegationId === "string" &&
+      delegationId &&
+      typeof status === "string" &&
+      status
+    ) {
+      return { delegationId, status };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * A settled live delegation row is strictly newer than a durable row for the
+ * same delegation that still says running.
+ *
+ * The runtime refreshes the Task row the moment its delegate settles, but the
+ * durable copy only catches up once the persistence outbox flushes. A
+ * switch-back that reads the host in between must not let the stale durable
+ * row overwrite the settled live row: that is what left a finished subagent
+ * showing as running forever, because no later event re-emits its settlement.
+ * Terminal-versus-terminal keeps durable as the source of truth.
+ */
+function isSettledDelegationNewer(
+  live: UiMessage,
+  durable: UiMessage,
+): boolean {
+  const liveDelegation = delegationSnapshotOf(live);
+  const durableDelegation = delegationSnapshotOf(durable);
+  if (!liveDelegation || !durableDelegation) return false;
+  if (liveDelegation.delegationId !== durableDelegation.delegationId) {
+    return false;
+  }
+  return (
+    DELEGATION_TERMINAL_STATUSES.has(liveDelegation.status) &&
+    (durableDelegation.status === "running" ||
+      durableDelegation.status === "waiting")
+  );
 }
 
 /**
