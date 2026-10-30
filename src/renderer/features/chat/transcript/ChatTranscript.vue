@@ -68,7 +68,6 @@ import TranscriptHistory from "./TranscriptHistory.vue";
 import TranscriptTail from "./TranscriptTail.vue";
 import AgentStatusCapsule from "../../../components/AgentStatusCapsule.vue";
 import PlanStatusCapsule from "../../../components/PlanStatusCapsule.vue";
-import TurnStatusIndicator from "../../../components/TurnStatusIndicator.vue";
 import { isDelegationStartTool } from "../../../lib/tool-display";
 import { useTranscriptScroll } from "./hooks/useTranscriptScroll";
 
@@ -456,10 +455,6 @@ function returnToLatest(): void {
       :session-id="props.sessionId"
     />
 
-    <TurnStatusIndicator
-      v-if="props.paneVisible"
-      :session-id="props.sessionId"
-    />
   </div>
     <ContextMenu :state="contextMenu" @close="closeContextMenu" />
 </template>
