@@ -75,6 +75,12 @@ export {
  *     read-only banner and the gated shell; neither the stylesheet nor
  * the `styles/*.css` defines either, so they carry no rule in
  *     this tree (reported, not replaced).
+ * 10. **Input history lives in the Composer, not the editor.** The
+ *     editor only emits a gated ArrowUp/Down; the Composer derives the
+ *     entries from the session's user messages, owns the navigation
+ *     state, and paints recalled text through the draft (attachments are
+ *     dropped while navigating and restored with the stashed draft).
+ *     Typing, submitting, or switching sessions resets navigation.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -123,6 +129,13 @@ import {
   isImageFilePath,
   nextChipToken,
 } from "../features/chat/composer/editor";
+import type { ComposerFileReference } from "../features/chat/composer/editor";
+import {
+  INITIAL_INPUT_HISTORY_STATE,
+  navigateInputHistory,
+  promptHistoryFromMessages,
+  type InputHistoryDirection,
+} from "../features/chat/composer/input-history";
 import { useComposerAttachments } from "../features/chat/composer/hooks/useComposerAttachments";
 import { useComposerDraft } from "../features/chat/composer/hooks/useComposerDraft";
 import { useComposerSubmit } from "../features/chat/composer/hooks/useComposerSubmit";
@@ -616,11 +629,54 @@ function acceptCompletion(index: number): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* Input history (ArrowUp/Down recall)                                 */
+/* ------------------------------------------------------------------ */
+
+const inputHistoryEntries = computed(() => promptHistoryFromMessages(liveMessages.value));
+const historyIndex = ref<number | null>(INITIAL_INPUT_HISTORY_STATE.index);
+const historySavedDraft = ref<string | null>(INITIAL_INPUT_HISTORY_STATE.savedDraft);
+const historySavedReferences = ref<ComposerFileReference[]>([]);
+
+function resetInputHistory(): void {
+  historyIndex.value = INITIAL_INPUT_HISTORY_STATE.index;
+  historySavedDraft.value = INITIAL_INPUT_HISTORY_STATE.savedDraft;
+  historySavedReferences.value = [];
+}
+
+function onComposerHistoryNavigate(direction: InputHistoryDirection): void {
+  const result = navigateInputHistory(
+    { index: historyIndex.value, savedDraft: historySavedDraft.value },
+    inputHistoryEntries.value,
+    direction,
+    draft.readLiveDraft(),
+  );
+  if (!result) return;
+  if (historyIndex.value === null) {
+    historySavedReferences.value = [...draft.fileReferencesRef.value];
+  }
+  historyIndex.value = result.state.index;
+  historySavedDraft.value = result.state.savedDraft;
+  const references =
+    result.state.index === null ? historySavedReferences.value : [];
+  draft.applyEditorDraft(result.text, references, result.text.length);
+  if (result.state.index === null) historySavedReferences.value = [];
+  invalidatePromptEnhancement();
+}
+
+watch(activeSessionId, resetInputHistory);
+
+/* ------------------------------------------------------------------ */
 /* Event handlers                                                      */
 /* ------------------------------------------------------------------ */
 
 function onComposerInputSubmit(steering?: boolean): void {
+  resetInputHistory();
   void submit(steering);
+}
+
+function onComposerInput(source: string, caret: number): void {
+  resetInputHistory();
+  draft.handleInput(source, caret);
 }
 
 function onCompositionEnd(event: CompositionEvent): void {
@@ -750,9 +806,10 @@ watch(
           :composer-ac="composerAc"
           @paste="pasteClipboardFiles"
           @accept-completion="acceptCompletion"
+          @history-navigate="onComposerHistoryNavigate"
           @submit="onComposerInputSubmit"
           @insert-newline="draft.insertNewlineInEditor"
-          @input="draft.handleInput"
+          @input="onComposerInput"
           @composition-start="draft.setComposing(true)"
           @composition-end="onCompositionEnd"
           @focus="draft.setInputFocused(true)"
