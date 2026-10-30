@@ -8089,6 +8089,27 @@ Delegation rules:
     this.turnTracker?.end("aborted");
   }
 
+  /**
+   * User-initiated stop of one delegation (status-bar stop button). Mirrors
+   * `TaskStop` for a single id: the run settles as `stopped`, its Task row
+   * refreshes, and any parent wait on it resolves. Unlike `abort()` it never
+   * touches the parent turn, so the main agent keeps its run and can pick up
+   * the stopped delegation's status and partial report through TaskWait.
+   */
+  async stopDelegation(
+    delegationId: string,
+  ): Promise<{ stopped: boolean; status?: string }> {
+    const record = this.delegations.get(delegationId);
+    if (!record) return { stopped: false };
+    if (record.status !== "running" && record.status !== "waiting") {
+      return { stopped: false, status: record.status };
+    }
+    record.stopRequested = true;
+    record.abort();
+    await record.completion;
+    return { stopped: true, status: record.status };
+  }
+
   /** Ask pi-agent-core to stop after the current assistant/tool turn. */
   requestGracefulStop(): { requested: boolean } {
     if (this.disposed || !this.agent.state.isStreaming) {

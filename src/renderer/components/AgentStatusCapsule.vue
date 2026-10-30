@@ -524,9 +524,16 @@ function handleSubagentClick(delegationId: string) {
   }
 }
 
-function handleAbort(event: MouseEvent) {
+/**
+ * Stop only this capsule's delegation. The old handler aborted the whole
+ * session turn, so stopping a subagent from the status bar also killed the
+ * main dialog's run; the parent must keep running to pick up the stopped
+ * delegation's status and partial report through TaskWait.
+ */
+function handleStopDelegation(event: MouseEvent, delegationId: string) {
   event.stopPropagation();
-  void store.appState?.abort();
+  if (!targetSessionId.value) return;
+  void store.appState?.stopDelegation(targetSessionId.value, delegationId);
 }
 </script>
 
@@ -584,7 +591,7 @@ function handleAbort(event: MouseEvent) {
           class="capsule-stop-btn"
           :title="t('chat.stopGenerating')"
           :aria-label="t('chat.stopGenerating')"
-          @click="handleAbort"
+          @click="handleStopDelegation($event, sub.id)"
         >
           <IconStop :size="10" />
         </button>

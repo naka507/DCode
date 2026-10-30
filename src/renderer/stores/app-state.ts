@@ -389,6 +389,11 @@ export type AppState = {
   closeSubagentPanel: () => void;
   /** Abort one session's running turn, visible or not. */
   abortSession: (sessionId: string) => Promise<void>;
+  /** Stop one running delegation; the parent turn keeps running. */
+  stopDelegation: (
+    sessionId: string,
+    delegationId: string,
+  ) => Promise<{ stopped: boolean; status?: string } | undefined>;
   openWorkPanel: () => void;
   toggleWorkPanel: () => void;
   openWorkPanelTab: (tab: WorkPanelTab) => void;

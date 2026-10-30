@@ -6675,6 +6675,42 @@ describe("DesktopAgentRuntime subagents", () => {
     await runtime.dispose();
   });
 
+  it("stops one delegation from the user path without touching the other", async () => {
+    const runtime = createRuntime({ subagents: [explorer] });
+    subagentRuns.calls.length = 0;
+    subagentRuns.instances.length = 0;
+    subagentRuns.deferred = true;
+    subagentRuns.resolveRun = undefined;
+    const task = taskTool(runtime);
+
+    const first = await task.execute("task-1", {
+      agent: "explorer",
+      task: "Find it.",
+    });
+    const second = await task.execute("task-2", {
+      agent: "explorer",
+      task: "Find it too.",
+    });
+    const firstId = (first.details as any).delegationId as string;
+    const secondId = (second.details as any).delegationId as string;
+
+    const result = await (runtime as any).stopDelegation(secondId);
+    expect(result).toEqual({ stopped: true, status: "stopped" });
+    expect((runtime as any).delegations.get(secondId).status).toBe("stopped");
+    expect((runtime as any).delegations.get(firstId).status).toBe("running");
+    // Settled and unknown ids are no-ops, never errors.
+    expect(await (runtime as any).stopDelegation(secondId)).toEqual({
+      stopped: false,
+      status: "stopped",
+    });
+    expect(await (runtime as any).stopDelegation("no-such-delegation")).toEqual({
+      stopped: false,
+    });
+    subagentRuns.deferred = false;
+
+    await runtime.dispose();
+  });
+
   it("caps running delegates per session at MAX_SUBAGENT_CONCURRENCY", async () => {
     const runtime = createRuntime({ subagents: [explorer] });
     subagentRuns.calls.length = 0;

@@ -125,6 +125,7 @@ export function createSessionSlice({
   | "forkAssistantMessage"
   | "configureActiveSession"
   | "abortSession"
+  | "stopDelegation"
 > {
   const refreshSessionList = createRefreshCoordinator(async () => {
     const result = await api.listSessions();
@@ -639,6 +640,12 @@ export function createSessionSlice({
           [sessionId]: result.session.mode === "plan" ? "planning" : "inactive",
         },
       }));
+    },
+
+    /** Stop one running delegation; the parent turn is untouched. */
+    stopDelegation: async (sessionId, delegationId) => {
+      if (!sessionId || !delegationId) return undefined;
+      return api.stopDelegation(sessionId, delegationId);
     },
 
     /** Abort one session's running turn, whether or not it is the visible one. */
