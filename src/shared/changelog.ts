@@ -25,6 +25,14 @@ export type ChangelogEntry = {
 
 const enEntries: ChangelogEntry[] = [
   {
+    version: "1.2.0",
+    date: "2026-10-31",
+    highlights: [
+      "Composer input history: ArrowUp recalls the previous sent prompt and ArrowDown walks back to the in-progress draft, which is restored when moving past the newest entry.",
+      "Removed the TurnStatusIndicator capsule from the transcript; turn status is shown only by the runtime lane and the outcome card, so the two status sources can no longer contradict each other.",
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-10-19",
     highlights: [
@@ -136,6 +144,14 @@ const enEntries: ChangelogEntry[] = [
 ];
 
 const zhCNEntries: ChangelogEntry[] = [
+  {
+    version: "1.2.0",
+    date: "2026-10-31",
+    highlights: [
+      "输入框历史：按 ↑ 调取上一条已发送提示词，↓ 往回走，越过最新一条恢复正在输入的草稿。",
+      "移除对话框里的 TurnStatusIndicator 胶囊：turn 状态只由运行时状态条和结果卡片展示，两处状态源不再自相矛盾。",
+    ],
+  },
   {
     version: "1.1.0",
     date: "2026-10-19",

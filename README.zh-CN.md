@@ -1,7 +1,7 @@
 # DCode
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Release Line](https://img.shields.io/badge/Release_Line-1.1.x-green.svg)](package.json)
+[![Release Line](https://img.shields.io/badge/Release_Line-1.2.x-green.svg)](package.json)
 [![Node](https://img.shields.io/badge/Node-%E2%89%A522.19-brightgreen.svg)](https://nodejs.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#)
 
@@ -13,7 +13,7 @@
 
 ## 项目状态 (Status)
 
-- **当前版本线 (Release Line):** `1.1.x` (当前稳定版本: `1.1.0`)
+- **当前版本线 (Release Line):** `1.2.x` (当前稳定版本: `1.2.0`)
 - **开源协议 (License):** Apache License 2.0 (Apache-2.0)
 
 ---
