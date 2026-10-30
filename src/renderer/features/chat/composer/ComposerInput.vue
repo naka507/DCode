@@ -45,6 +45,11 @@
  *     (f3843754); a Vue template ref is filled after mount, so the effect is a
  *     post-flush watch that installs on the first non-null element and
  *     disposes through `onCleanup`.
+ * 8. **History keys are gated on the caret's logical line.** ArrowUp/Down
+ *     recall a sent prompt only when the caret sits on the first/last
+ *     logical line (no newline before/after it); otherwise the keypress
+ *     keeps its native caret move between lines. Autocomplete navigation
+ *     above still wins while it has items.
  */
 import { toValue, watch, type Ref } from "vue";
 import type { ComposerAutocompleteController } from "../../../hooks/use-composer-autocomplete";
@@ -70,6 +75,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   paste: [event: ClipboardEvent];
   "accept-completion": [index: number];
+  "history-navigate": [direction: "up" | "down"];
   submit: [steering?: boolean];
   "insert-newline": [];
   input: [source: string, caret: number];
@@ -146,6 +152,26 @@ function onKeyDown(event: KeyboardEvent) {
       event.preventDefault();
       emit("accept-completion", ac.highlight.value);
       return;
+    }
+  }
+  if (
+    (event.key === "ArrowUp" || event.key === "ArrowDown") &&
+    !props.inputBlocked &&
+    !event.shiftKey &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey
+  ) {
+    const element = event.currentTarget as HTMLDivElement;
+    const text = readEditorValue(element);
+    const caret = editorSelectionRange(element).start;
+    const atEdge =
+      event.key === "ArrowUp"
+        ? !text.slice(0, caret).includes("\n")
+        : !text.slice(caret).includes("\n");
+    if (atEdge) {
+      event.preventDefault();
+      emit("history-navigate", event.key === "ArrowUp" ? "up" : "down");
     }
   }
   if (
