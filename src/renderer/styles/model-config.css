@@ -1624,7 +1624,7 @@
   flex: none;
 }
 
-   to the plugin, so the user supplies only the key. */
+/* The key is passed to the plugin, so the user supplies only the key. */
 .model-provider-key-entry {
   display: flex;
   align-items: flex-end;
